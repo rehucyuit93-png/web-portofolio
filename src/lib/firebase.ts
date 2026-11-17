@@ -6,7 +6,14 @@ import {
   sendPasswordResetEmail,
   type User,
 } from 'firebase/auth';
-import { doc, getDocFromServer, getFirestore } from 'firebase/firestore';
+import {
+  doc,
+  enableNetwork,
+  getDocFromServer,
+  getFirestore,
+  initializeFirestore,
+  type Firestore,
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -14,7 +21,19 @@ export const BOOTSTRAP_ADMIN_EMAIL = 'rehu.cyuit93@gmail.com';
 
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+function createFirestoreDb(): Firestore {
+  try {
+    return initializeFirestore(
+      app,
+      { experimentalAutoDetectLongPolling: true },
+      firebaseConfig.firestoreDatabaseId
+    );
+  } catch {
+    return getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  }
+}
+
+export const db = createFirestoreDb();
 export const auth = getAuth(app);
 auth.languageCode = 'id';
 export const storage = getStorage(app);
@@ -171,60 +190,88 @@ export function formatAuthErrorMessage(err: unknown): {
   return { message: raw || 'Terjadi kesalahan autentikasi.' };
 }
 
-export async function testFirestoreConnection(): Promise<FirestoreConnectionStatus> {
+export async function ensureFirestoreNetworkOnline(): Promise<void> {
   try {
+    await enableNetwork(db);
+  } catch {
+    // Ignore transient enableNetwork errors
+  }
+}
+
+export async function testFirestoreConnection(): Promise<FirestoreConnectionStatus> {
+  const attempt = async (): Promise<FirestoreConnectionStatus> => {
     await getDocFromServer(doc(db, 'test', 'connection'));
     return { ok: true };
-  } catch (error) {
-    const rawMsg = error instanceof Error ? error.message : String(error);
-    const code = (error as { code?: string })?.code || '';
+  };
 
-    if (
-      rawMsg.includes('Free daily read units per project') ||
-      rawMsg.includes('Quota exceeded') ||
-      code === 'resource-exhausted'
-    ) {
-      console.error('Firestore quota exceeded:', rawMsg);
-      return {
-        ok: false,
-        reason: 'quota',
-        message:
-          'Kuota harian gratis Firestore telah terlampaui. Kuota akan direset keesokan hari atau Anda dapat meningkatkan paket Firebase.',
-        upgradeUrl: getQuotaUpgradeUrl(),
-      };
-    }
+  for (let i = 0; i < 2; i++) {
+    try {
+      return await attempt();
+    } catch (error) {
+      const rawMsg = error instanceof Error ? error.message : String(error);
+      const lower = rawMsg.toLowerCase();
+      const code = (error as { code?: string })?.code || '';
 
-    if (rawMsg.includes('the client is offline') || code === 'unavailable') {
-      console.error('Please check your Firebase configuration (client is offline):', rawMsg);
-      return {
-        ok: false,
-        reason: 'offline',
-        message:
-          'Tidak dapat terhubung ke server Firestore (offline atau koneksi terblokir). Periksa koneksi internet Anda.',
-      };
-    }
+      if (
+        rawMsg.includes('Free daily read units per project') ||
+        rawMsg.includes('Quota exceeded') ||
+        code === 'resource-exhausted'
+      ) {
+        console.error('Firestore quota exceeded:', rawMsg);
+        return {
+          ok: false,
+          reason: 'quota',
+          message:
+            'Kuota harian gratis Firestore telah terlampaui. Kuota akan direset keesokan hari atau Anda dapat meningkatkan paket Firebase.',
+          upgradeUrl: getQuotaUpgradeUrl(),
+        };
+      }
 
-    if (code === 'not-found' || rawMsg.includes('does not exist')) {
-      console.error('Firestore database not found:', rawMsg);
-      return {
-        ok: false,
-        reason: 'not-found',
-        message: `Database Firestore (${firebaseConfig.firestoreDatabaseId}) belum ditemukan pada proyek ${firebaseConfig.projectId}.`,
-      };
-    }
+      if (
+        code === 'permission-denied' ||
+        rawMsg.includes('Missing or insufficient permissions') ||
+        rawMsg.includes('PERMISSION_DENIED')
+      ) {
+        // Permission denied from default-deny proves server connection succeeded.
+        return { ok: true };
+      }
 
-    // Permission denied from default-deny proves server connection succeeded.
-    if (
-      code === 'permission-denied' ||
-      rawMsg.includes('Missing or insufficient permissions') ||
-      rawMsg.includes('PERMISSION_DENIED')
-    ) {
+      const isTransientOffline =
+        lower.includes('the client is offline') ||
+        lower.includes('could not reach cloud firestore') ||
+        code === 'unavailable' ||
+        code === 'deadline-exceeded';
+
+      if (isTransientOffline) {
+        if (i === 0 && navigator.onLine) {
+          await ensureFirestoreNetworkOnline();
+          await new Promise((r) => setTimeout(r, 400));
+          continue;
+        }
+        console.error('Please check your Firebase configuration (client is offline):', rawMsg);
+        return {
+          ok: false,
+          reason: 'offline',
+          message:
+            'Tidak dapat terhubung ke server Firestore (offline atau koneksi terblokir). Periksa koneksi internet Anda.',
+        };
+      }
+
+      if (code === 'not-found' || lower.includes('does not exist')) {
+        console.error('Firestore database not found:', rawMsg);
+        return {
+          ok: false,
+          reason: 'not-found',
+          message: `Database Firestore (${firebaseConfig.firestoreDatabaseId}) belum ditemukan pada proyek ${firebaseConfig.projectId}.`,
+        };
+      }
+
+      console.warn('Firestore connection check warning:', rawMsg);
       return { ok: true };
     }
-
-    console.warn('Firestore connection check warning:', rawMsg);
-    return { ok: true };
   }
+
+  return { ok: true };
 }
 
 export { firebaseConfig };

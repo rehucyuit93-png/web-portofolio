@@ -139,17 +139,17 @@ export const AuthView: React.FC<AuthViewProps> = ({
         if (!fullName.trim()) {
           throw new Error('Nama lengkap wajib diisi.');
         }
+        const pendingReg = JSON.stringify({
+          fullName: fullName.trim(),
+          role,
+          nipNisn: nipNisn.trim(),
+          jabatanKelas: jabatanKelas.trim(),
+        });
+        const normalizedEmail = email.trim().toLowerCase();
+        localStorage.setItem(`pending_reg_email_${normalizedEmail}`, pendingReg);
         const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        localStorage.setItem(`pending_reg_${cred.user.uid}`, pendingReg);
         await updateProfile(cred.user, { displayName: fullName.trim() });
-        localStorage.setItem(
-          `pending_reg_${cred.user.uid}`,
-          JSON.stringify({
-            fullName: fullName.trim(),
-            role,
-            nipNisn: nipNisn.trim(),
-            jabatanKelas: jabatanKelas.trim(),
-          })
-        );
         // Send verification email in background without blocking dashboard access
         sendVerificationEmailSafe(cred.user)
           .then((res) => {

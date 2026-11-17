@@ -69,16 +69,27 @@ export function formatFirestoreErrorForUser(error: unknown): string {
     // raw is already plain text
   }
 
-  if (inner.includes('Free daily read units per project') || inner.includes('Quota exceeded')) {
+  const lower = inner.toLowerCase();
+
+  if (
+    lower.includes('free daily read units per project') ||
+    lower.includes('quota exceeded') ||
+    lower.includes('resource-exhausted')
+  ) {
     return `Kuota harian gratis Firestore telah habis. Kuota akan direset besok, atau buka Firebase Console (${getQuotaUpgradeUrl()}) untuk upgrade paket.`;
   }
-  if (inner.includes('the client is offline') || inner.includes('unavailable')) {
+  if (
+    lower.includes('the client is offline') ||
+    lower.includes('unavailable') ||
+    lower.includes('could not reach cloud firestore') ||
+    lower.includes('deadline-exceeded')
+  ) {
     return 'Koneksi ke database Firestore sedang offline atau tidak stabil. Periksa koneksi internet Anda lalu coba lagi.';
   }
-  if (inner.includes('Missing or insufficient permissions') || inner.includes('PERMISSION_DENIED')) {
-    return `Akses database ditolak oleh aturan keamanan${path ? ` (${op} ${path})` : ''}. Pastikan akun Anda sudah terverifikasi dan memiliki izin yang sesuai.`;
+  if (lower.includes('missing or insufficient permissions') || lower.includes('permission_denied') || lower.includes('permission-denied')) {
+    return `Akses database ditolak oleh aturan keamanan${path ? ` (${op} ${path})` : ''}. Coba muat ulang sesi atau masuk ulang dengan akun Anda.`;
   }
-  if (inner.includes('requires an index') || inner.includes('FAILED_PRECONDITION')) {
+  if (lower.includes('requires an index') || lower.includes('failed_precondition')) {
     return `Kueri database membutuhkan indeks Firestore${path ? ` pada ${path}` : ''}.`;
   }
   return inner || 'Terjadi kesalahan saat mengakses database Firestore.';

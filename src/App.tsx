@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { applyActionCode, onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import {
   auth,
+  ensureFirestoreNetworkOnline,
   formatAuthErrorMessage,
   getQuotaUpgradeUrl,
   sendVerificationEmailSafe,
@@ -121,7 +122,11 @@ export default function App() {
 
   const hydrateUserSession = useCallback(async (user: User) => {
     setSessionError(null);
-    const pendingRaw = localStorage.getItem(`pending_reg_${user.uid}`);
+    const pendingKeyByUid = `pending_reg_${user.uid}`;
+    const pendingKeyByEmail = user.email ? `pending_reg_email_${user.email.toLowerCase()}` : '';
+    const pendingRaw =
+      localStorage.getItem(pendingKeyByUid) ||
+      (pendingKeyByEmail ? localStorage.getItem(pendingKeyByEmail) : null);
     let pending: {
       fullName?: string;
       role?: 'guru' | 'siswa';
@@ -134,10 +139,12 @@ export default function App() {
       } catch {
         pending = {};
       }
-      localStorage.removeItem(`pending_reg_${user.uid}`);
+      localStorage.removeItem(pendingKeyByUid);
+      if (pendingKeyByEmail) localStorage.removeItem(pendingKeyByEmail);
     }
 
     try {
+      await user.getIdToken().catch(() => undefined);
       const init = await ensureUserInitialized({
         uid: user.uid,
         email: user.email || '',
@@ -149,6 +156,7 @@ export default function App() {
         jabatanKelas: pending.jabatanKelas,
       });
 
+      setDbStatus({ ok: true });
       setAccount(init.account);
       setProfile(init.profile);
       setSettings(init.settings);
@@ -463,9 +471,21 @@ export default function App() {
                     onClick={async () => {
                       setRetryingSession(true);
                       try {
+                        await ensureFirestoreNetworkOnline();
+                        await firebaseUser.reload().catch(() => undefined);
+                        try {
+                          await firebaseUser.getIdToken(true);
+                        } catch (tokenErr: unknown) {
+                          const code = (tokenErr as { code?: string })?.code || '';
+                          if (code === 'auth/user-token-expired' || code === 'auth/user-not-found') {
+                            await signOut(auth);
+                            setSessionError(null);
+                            notify('info', 'Sesi login berakhir. Silakan masuk kembali.');
+                            return;
+                          }
+                        }
                         await checkDbConnection();
-                        await firebaseUser.getIdToken(true);
-                        await hydrateUserSession(firebaseUser);
+                        await hydrateUserSession(auth.currentUser || firebaseUser);
                         notify('success', 'Berhasil terhubung ke database Firestore.');
                       } catch (err: unknown) {
                         notify('error', err instanceof Error ? err.message : 'Masih gagal terhubung ke database.');
@@ -476,6 +496,13 @@ export default function App() {
                     className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                   >
                     {retryingSession ? 'Menghubungkan...' : 'Coba Hubungkan Ulang'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    Muat Ulang Halaman
                   </button>
                   <button
                     type="button"

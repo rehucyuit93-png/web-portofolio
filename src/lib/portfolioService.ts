@@ -14,7 +14,7 @@ import {
   where,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { BOOTSTRAP_ADMIN_EMAIL, db } from './firebase';
+import { BOOTSTRAP_ADMIN_EMAIL, db, ensureFirestoreNetworkOnline } from './firebase';
 import { handleFirestoreError, OperationType } from './firestoreError';
 import type {
   Achievement,
@@ -129,6 +129,16 @@ const initInFlight = new Map<
   Promise<{ account: UserAccount; profile: UserProfile; settings: UserSettings }>
 >();
 
+function isTransientFirestoreNetworkError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    msg.includes('the client is offline') ||
+    msg.includes('unavailable') ||
+    msg.includes('could not reach cloud firestore') ||
+    msg.includes('deadline-exceeded')
+  );
+}
+
 export async function ensureUserInitialized(params: {
   uid: string;
   email: string;
@@ -142,7 +152,23 @@ export async function ensureUserInitialized(params: {
   const existingPromise = initInFlight.get(params.uid);
   if (existingPromise) return existingPromise;
 
-  const task = runEnsureUserInitialized(params).finally(() => {
+  const task = (async () => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await runEnsureUserInitialized(params);
+      } catch (err) {
+        lastError = err;
+        if (attempt < 2 && navigator.onLine && isTransientFirestoreNetworkError(err)) {
+          await ensureFirestoreNetworkOnline();
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  })().finally(() => {
     initInFlight.delete(params.uid);
   });
   initInFlight.set(params.uid, task);
@@ -285,7 +311,7 @@ async function runEnsureUserInitialized(params: {
     settings = settingsSnap.data() as UserSettings;
   }
 
-  // Ensure initial public portfolio document exists so public URL works right away
+  // Ensure initial public portfolio document exists so public URL works right away (non-blocking on slug collision)
   const safeUsername = sanitizeUsername(profile.username || defaultUsername);
   try {
     const pubRef = doc(db, 'publicPortfolios', safeUsername);
@@ -311,7 +337,7 @@ async function runEnsureUserInitialized(params: {
       });
     }
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, `publicPortfolios/${safeUsername}`);
+    console.warn(`Non-fatal publicPortfolios sync warning (${safeUsername}):`, error);
   }
 
   saveOfflineCache(params.uid, 'session', { account, profile, settings });
