@@ -1,0 +1,512 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUsername(username) {
+      return username is string && username.size() >= 3 && username.size() <= 48 && username.matches('^[a-z0-9\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'rehu.cyuit93@gmail.com' && isEmailVerified()) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOptionalString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isOptionalBoundedList(data, key, maxItems) {
+      return !(key in data) || (data[key] is list && data[key].size() <= maxItems);
+    }
+
+    // Entity validation helpers (exact schema sync with firebase-blueprint.json)
+    function isValidUserAccount(data) {
+      return data.keys().hasAll(['uid', 'username', 'email', 'displayName', 'role', 'isActive', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'username', 'email', 'displayName', 'role', 'nipNisn', 'jabatanKelas', 'photoURL', 'isActive', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && isValidUsername(data.username)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.role in ['admin', 'guru', 'siswa']
+        && isOptionalString(data, 'nipNisn', 40)
+        && isOptionalString(data, 'jabatanKelas', 100)
+        && isOptionalString(data, 'photoURL', 200000)
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminMarker(data) {
+      return data.keys().hasAll(['uid', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'grantedBy', 'createdAt'])
+        && isValidId(data.uid)
+        && isOptionalString(data, 'grantedBy', 128)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'username', 'fullName', 'email', 'isPublished', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'username', 'fullName', 'nipNisn', 'jabatanKelas', 'birthPlace', 'birthDate', 'address', 'phone', 'email', 'education', 'expertise', 'bio', 'photoURL', 'isPublished', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && isValidUsername(data.username)
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
+        && isOptionalString(data, 'nipNisn', 40)
+        && isOptionalString(data, 'jabatanKelas', 100)
+        && isOptionalString(data, 'birthPlace', 100)
+        && isOptionalString(data, 'birthDate', 20)
+        && isOptionalString(data, 'address', 300)
+        && isOptionalString(data, 'phone', 30)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && isOptionalString(data, 'education', 150)
+        && isOptionalString(data, 'expertise', 250)
+        && isOptionalString(data, 'bio', 1500)
+        && isOptionalString(data, 'photoURL', 200000)
+        && data.isPublished is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPortfolioDocument(data) {
+      return data.keys().hasAll(['uid', 'title', 'category', 'year', 'fileName', 'fileType', 'fileSize', 'fileUrl', 'isPublic', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'title', 'category', 'year', 'description', 'fileName', 'fileType', 'fileSize', 'fileUrl', 'storagePath', 'isPublic', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 80
+        && data.year is int && data.year >= 1970 && data.year <= 2100
+        && isOptionalString(data, 'description', 1500)
+        && data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 255
+        && data.fileType in ['PDF', 'DOCX', 'PPT', 'XLSX', 'JPG', 'PNG']
+        && data.fileSize is int && data.fileSize >= 0 && data.fileSize <= 20000000
+        && data.fileUrl is string && data.fileUrl.size() >= 1 && data.fileUrl.size() <= 700000
+        && isOptionalString(data, 'storagePath', 500)
+        && data.isPublic is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCertificate(data) {
+      return data.keys().hasAll(['uid', 'eventName', 'organizer', 'year', 'fileUrl', 'isPublic', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'eventName', 'organizer', 'year', 'description', 'fileName', 'fileUrl', 'storagePath', 'isPublic', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.eventName is string && data.eventName.size() >= 1 && data.eventName.size() <= 200
+        && data.organizer is string && data.organizer.size() >= 1 && data.organizer.size() <= 160
+        && data.year is int && data.year >= 1970 && data.year <= 2100
+        && isOptionalString(data, 'description', 1200)
+        && isOptionalString(data, 'fileName', 255)
+        && data.fileUrl is string && data.fileUrl.size() >= 1 && data.fileUrl.size() <= 700000
+        && isOptionalString(data, 'storagePath', 500)
+        && data.isPublic is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAchievement(data) {
+      return data.keys().hasAll(['uid', 'title', 'level', 'year', 'isPublic', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'title', 'level', 'year', 'description', 'photoUrl', 'storagePath', 'isPublic', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.level in ['Sekolah', 'Kabupaten/Kota', 'Provinsi', 'Nasional', 'Internasional']
+        && data.year is int && data.year >= 1970 && data.year <= 2100
+        && isOptionalString(data, 'description', 1500)
+        && isOptionalString(data, 'photoUrl', 200000)
+        && isOptionalString(data, 'storagePath', 500)
+        && data.isPublic is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidActivity(data) {
+      return data.keys().hasAll(['uid', 'title', 'date', 'year', 'isPublic', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'title', 'date', 'year', 'description', 'photoUrl', 'storagePath', 'isPublic', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.date is string && data.date.size() >= 4 && data.date.size() <= 30
+        && data.year is int && data.year >= 1970 && data.year <= 2100
+        && isOptionalString(data, 'description', 1500)
+        && isOptionalString(data, 'photoUrl', 200000)
+        && isOptionalString(data, 'storagePath', 500)
+        && data.isPublic is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll(['uid', 'title', 'album', 'year', 'imageUrl', 'isPublic', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'title', 'album', 'year', 'caption', 'imageUrl', 'storagePath', 'isPublic', 'createdAt'])
+        && isValidId(data.uid)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.album is string && data.album.size() >= 1 && data.album.size() <= 80
+        && data.year is int && data.year >= 1970 && data.year <= 2100
+        && isOptionalString(data, 'caption', 600)
+        && data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 200000
+        && isOptionalString(data, 'storagePath', 500)
+        && data.isPublic is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['uid', 'action', 'module', 'detail', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'userEmail', 'userName', 'action', 'module', 'detail', 'createdAt'])
+        && isValidId(data.uid)
+        && isOptionalString(data, 'userEmail', 200)
+        && isOptionalString(data, 'userName', 120)
+        && data.action in ['LOGIN', 'UPLOAD_FILE', 'EDIT_DATA', 'DELETE_DATA', 'ADMIN_ACTION', 'PUBLISH_PORTFOLIO']
+        && data.module is string && data.module.size() >= 1 && data.module.size() <= 80
+        && data.detail is string && data.detail.size() >= 1 && data.detail.size() <= 500
+        && data.createdAt is timestamp;
+    }
+
+    function isValidUserSettings(data) {
+      return data.keys().hasAll(['uid', 'theme', 'emailNotifications', 'activityAlerts', 'publicPortfolioEnabled', 'cvTemplate', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'theme', 'emailNotifications', 'activityAlerts', 'publicPortfolioEnabled', 'cvTemplate', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.theme in ['light', 'dark']
+        && data.emailNotifications is bool
+        && data.activityAlerts is bool
+        && data.publicPortfolioEnabled is bool
+        && data.cvTemplate in ['modern', 'ats']
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicPortfolio(data) {
+      return data.keys().hasAll(['uid', 'username', 'fullName', 'isPublished', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'username', 'fullName', 'role', 'nipNisn', 'jabatanKelas', 'education', 'expertise', 'bio', 'photoURL', 'isPublished', 'featuredDocuments', 'featuredCertificates', 'featuredAchievements', 'featuredGalleries', 'updatedAt'])
+        && isValidId(data.uid)
+        && isValidUsername(data.username)
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
+        && (!( 'role' in data ) || data.role in ['admin', 'guru', 'siswa'])
+        && isOptionalString(data, 'nipNisn', 40)
+        && isOptionalString(data, 'jabatanKelas', 100)
+        && isOptionalString(data, 'education', 150)
+        && isOptionalString(data, 'expertise', 250)
+        && isOptionalString(data, 'bio', 1500)
+        && isOptionalString(data, 'photoURL', 200000)
+        && data.isPublished is bool
+        && isOptionalBoundedList(data, 'featuredDocuments', 50)
+        && isOptionalBoundedList(data, 'featuredCertificates', 50)
+        && isOptionalBoundedList(data, 'featuredAchievements', 50)
+        && isOptionalBoundedList(data, 'featuredGalleries', 50)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFileBlob(data) {
+      return data.keys().hasAll(['uid', 'fileName', 'mimeType', 'chunkCount', 'totalSize', 'isPublic', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'fileName', 'mimeType', 'chunkCount', 'totalSize', 'isPublic', 'createdAt'])
+        && isValidId(data.uid)
+        && data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 255
+        && data.mimeType is string && data.mimeType.size() >= 1 && data.mimeType.size() <= 150
+        && data.chunkCount is int && data.chunkCount >= 1 && data.chunkCount <= 30
+        && data.totalSize is int && data.totalSize >= 1 && data.totalSize <= 10000000
+        && data.isPublic is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFileBlobChunk(data) {
+      return data.keys().hasAll(['uid', 'index', 'data', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'index', 'data', 'createdAt'])
+        && isValidId(data.uid)
+        && data.index is int && data.index >= 0 && data.index < 30
+        && data.data is string && data.data.size() >= 1 && data.data.size() <= 600000
+        && data.createdAt is timestamp;
+    }
+
+    // Collection rules
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && isValidUserAccount(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (request.auth.uid == userId && incoming().uid == request.auth.uid && incoming().role in ['guru', 'siswa'] && incoming().isActive == true) ||
+          isAdmin()
+        );
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && isValidUserAccount(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['username', 'displayName', 'nipNisn', 'jabatanKelas', 'photoURL', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(userId) && isValidAdminMarker(incoming()) && incoming().uid == userId && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /profiles/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && ((request.auth.uid == userId && incoming().uid == request.auth.uid) || isAdmin());
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['username', 'fullName', 'nipNisn', 'jabatanKelas', 'birthPlace', 'birthDate', 'address', 'phone', 'email', 'education', 'expertise', 'bio', 'photoURL', 'isPublished', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /documents/{docId} {
+      allow get: if isValidId(docId) && isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(docId)
+        && isValidPortfolioDocument(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(docId)
+        && isValidPortfolioDocument(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'year', 'description', 'fileName', 'fileType', 'fileSize', 'fileUrl', 'storagePath', 'isPublic', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(docId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+    }
+
+    match /certificates/{certId} {
+      allow get: if isValidId(certId) && isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(certId)
+        && isValidCertificate(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(certId)
+        && isValidCertificate(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['eventName', 'organizer', 'year', 'description', 'fileName', 'fileUrl', 'storagePath', 'isPublic', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(certId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+    }
+
+    match /achievements/{achId} {
+      allow get: if isValidId(achId) && isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(achId)
+        && isValidAchievement(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(achId)
+        && isValidAchievement(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'level', 'year', 'description', 'photoUrl', 'storagePath', 'isPublic', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(achId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+    }
+
+    match /activities/{actId} {
+      allow get: if isValidId(actId) && isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(actId)
+        && isValidActivity(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(actId)
+        && isValidActivity(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'date', 'year', 'description', 'photoUrl', 'storagePath', 'isPublic', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(actId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+    }
+
+    match /galleries/{galId} {
+      allow get: if isValidId(galId) && isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(galId)
+        && isValidGalleryItem(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(galId)
+        && isValidGalleryItem(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && (
+          (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'album', 'year', 'caption', 'isPublic'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(galId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+    }
+
+    match /logs/{logId} {
+      allow get: if isValidId(logId) && isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(logId)
+        && isValidAuditLog(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(logId) && isAdmin();
+    }
+
+    match /settings/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && isValidUserSettings(incoming())
+        && request.auth.uid == userId
+        && incoming().uid == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && isValidUserSettings(incoming())
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time
+        && (
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['theme', 'emailNotifications', 'activityAlerts', 'publicPortfolioEnabled', 'cvTemplate', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /publicPortfolios/{username} {
+      allow get: if isValidUsername(username) && (
+        resource == null ||
+        resource.data.isPublished == true ||
+        (isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin()))
+      );
+      allow list: if isAdmin();
+      allow create: if isSignedIn()
+        && isValidUsername(username)
+        && isValidPublicPortfolio(incoming())
+        && incoming().username == username
+        && incoming().updatedAt == request.time
+        && (incoming().uid == request.auth.uid || isAdmin());
+      allow update: if isSignedIn()
+        && isValidUsername(username)
+        && isValidPublicPortfolio(incoming())
+        && incoming().uid == existing().uid
+        && incoming().username == existing().username
+        && incoming().updatedAt == request.time
+        && (
+          (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'role', 'nipNisn', 'jabatanKelas', 'education', 'expertise', 'bio', 'photoURL', 'isPublished', 'featuredDocuments', 'featuredCertificates', 'featuredAchievements', 'featuredGalleries', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidUsername(username) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+    }
+
+    match /fileBlobs/{blobId} {
+      allow get: if isValidId(blobId) && (
+        resource == null ||
+        resource.data.isPublic == true ||
+        (isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin()))
+      );
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(blobId)
+        && isValidFileBlob(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(blobId)
+        && isValidFileBlob(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && (
+          (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['isPublic'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(blobId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+
+      match /chunks/{chunkId} {
+        allow get: if isValidId(blobId)
+          && isValidId(chunkId)
+          && (
+            get(/databases/$(database)/documents/fileBlobs/$(blobId)).data.isPublic == true ||
+            (isSignedIn() && (get(/databases/$(database)/documents/fileBlobs/$(blobId)).data.uid == request.auth.uid || isAdmin()))
+          );
+        allow list: if false;
+        allow create: if isSignedIn()
+          && isValidId(blobId)
+          && isValidId(chunkId)
+          && isValidFileBlobChunk(incoming())
+          && incoming().uid == request.auth.uid
+          && incoming().createdAt == request.time
+          && get(/databases/$(database)/documents/fileBlobs/$(blobId)).data.uid == request.auth.uid;
+        allow update: if false;
+        allow delete: if isValidId(blobId) && isValidId(chunkId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      }
+    }
+  }
+}

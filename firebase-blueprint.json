@@ -1,0 +1,287 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Core authenticated user account with RBAC role and portfolio slug.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 3, "maxLength": 48, "pattern": "^[a-z0-9\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["admin", "guru", "siswa"] },
+        "nipNisn": { "type": "string", "maxLength": 40 },
+        "jabatanKelas": { "type": "string", "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 200000 },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "email", "displayName", "role", "isActive", "createdAt", "updatedAt"]
+    },
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Trusted marker document granting admin privileges.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "grantedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Extended personal and professional profile with PII isolated to owner and admin.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 3, "maxLength": 48, "pattern": "^[a-z0-9\\-]+$" },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "nipNisn": { "type": "string", "maxLength": 40 },
+        "jabatanKelas": { "type": "string", "maxLength": 100 },
+        "birthPlace": { "type": "string", "maxLength": 100 },
+        "birthDate": { "type": "string", "maxLength": 20 },
+        "address": { "type": "string", "maxLength": 300 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "education": { "type": "string", "maxLength": 150 },
+        "expertise": { "type": "string", "maxLength": 250 },
+        "bio": { "type": "string", "maxLength": 1500 },
+        "photoURL": { "type": "string", "maxLength": 200000 },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "fullName", "email", "isPublished", "createdAt", "updatedAt"]
+    },
+    "PortfolioDocument": {
+      "title": "PortfolioDocument",
+      "description": "Uploaded portfolio document metadata and Firebase Storage reference.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "category": { "type": "string", "maxLength": 80 },
+        "year": { "type": "integer" },
+        "description": { "type": "string", "maxLength": 1500 },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "fileType": { "type": "string", "enum": ["PDF", "DOCX", "PPT", "XLSX", "JPG", "PNG"] },
+        "fileSize": { "type": "integer" },
+        "fileUrl": { "type": "string", "minLength": 1, "maxLength": 700000 },
+        "storagePath": { "type": "string", "maxLength": 500 },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "title", "category", "year", "fileName", "fileType", "fileSize", "fileUrl", "isPublic", "createdAt", "updatedAt"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Training, seminar, or competency certificate record.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "organizer": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "year": { "type": "integer" },
+        "description": { "type": "string", "maxLength": 1200 },
+        "fileName": { "type": "string", "maxLength": 255 },
+        "fileUrl": { "type": "string", "minLength": 1, "maxLength": 700000 },
+        "storagePath": { "type": "string", "maxLength": 500 },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "eventName", "organizer", "year", "fileUrl", "isPublic", "createdAt", "updatedAt"]
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "Academic, teaching, or professional achievement timeline entry.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "level": { "type": "string", "enum": ["Sekolah", "Kabupaten/Kota", "Provinsi", "Nasional", "Internasional"] },
+        "year": { "type": "integer" },
+        "description": { "type": "string", "maxLength": 1500 },
+        "photoUrl": { "type": "string", "maxLength": 200000 },
+        "storagePath": { "type": "string", "maxLength": 500 },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "title", "level", "year", "isPublic", "createdAt", "updatedAt"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Documented workshop, teaching, or institutional activity entry.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "date": { "type": "string", "minLength": 4, "maxLength": 30 },
+        "year": { "type": "integer" },
+        "description": { "type": "string", "maxLength": 1500 },
+        "photoUrl": { "type": "string", "maxLength": 200000 },
+        "storagePath": { "type": "string", "maxLength": 500 },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "title", "date", "year", "isPublic", "createdAt", "updatedAt"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Photo gallery item organized by album category.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "album": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "year": { "type": "integer" },
+        "caption": { "type": "string", "maxLength": 600 },
+        "imageUrl": { "type": "string", "minLength": 1, "maxLength": 200000 },
+        "storagePath": { "type": "string", "maxLength": 500 },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "title", "album", "year", "imageUrl", "isPublic", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable activity audit log for login, upload, edit, delete, and admin actions.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userEmail": { "type": "string", "maxLength": 200 },
+        "userName": { "type": "string", "maxLength": 120 },
+        "action": { "type": "string", "enum": ["LOGIN", "UPLOAD_FILE", "EDIT_DATA", "DELETE_DATA", "ADMIN_ACTION", "PUBLISH_PORTFOLIO"] },
+        "module": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "detail": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "action", "module", "detail", "createdAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User application preferences for theme, notifications, and CV template.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "emailNotifications": { "type": "boolean" },
+        "activityAlerts": { "type": "boolean" },
+        "publicPortfolioEnabled": { "type": "boolean" },
+        "cvTemplate": { "type": "string", "enum": ["modern", "ats"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "theme", "emailNotifications", "activityAlerts", "publicPortfolioEnabled", "cvTemplate", "updatedAt"]
+    },
+    "PublicPortfolio": {
+      "title": "PublicPortfolio",
+      "description": "Sanitized public portfolio showcase keyed by username without private PII.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 3, "maxLength": 48, "pattern": "^[a-z0-9\\-]+$" },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["admin", "guru", "siswa"] },
+        "nipNisn": { "type": "string", "maxLength": 40 },
+        "jabatanKelas": { "type": "string", "maxLength": 100 },
+        "education": { "type": "string", "maxLength": 150 },
+        "expertise": { "type": "string", "maxLength": 250 },
+        "bio": { "type": "string", "maxLength": 1500 },
+        "photoURL": { "type": "string", "maxLength": 200000 },
+        "isPublished": { "type": "boolean" },
+        "featuredDocuments": { "type": "array" },
+        "featuredCertificates": { "type": "array" },
+        "featuredAchievements": { "type": "array" },
+        "featuredGalleries": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "fullName", "isPublished", "updatedAt"]
+    },
+    "FileBlob": {
+      "title": "FileBlob",
+      "description": "Chunked file metadata stored in Firestore when Firebase Storage bucket is unavailable.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "mimeType": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "chunkCount": { "type": "integer" },
+        "totalSize": { "type": "integer" },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "fileName", "mimeType", "chunkCount", "totalSize", "isPublic", "createdAt"]
+    },
+    "FileBlobChunk": {
+      "title": "FileBlobChunk",
+      "description": "Individual base64 chunk belonging to a FileBlob parent document.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "index": { "type": "integer" },
+        "data": { "type": "string", "minLength": 1, "maxLength": 600000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "index", "data", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "User account records keyed by Auth UID."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminMarker" },
+      "description": "Trusted admin role marker collection."
+    },
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Detailed user profile containing private PII restricted to owner and admin."
+    },
+    "/documents/{docId}": {
+      "schema": { "$ref": "#/entities/PortfolioDocument" },
+      "description": "Portfolio documents owned by users."
+    },
+    "/certificates/{certId}": {
+      "schema": { "$ref": "#/entities/Certificate" },
+      "description": "User certificates owned by users."
+    },
+    "/achievements/{achId}": {
+      "schema": { "$ref": "#/entities/Achievement" },
+      "description": "User achievements owned by users."
+    },
+    "/activities/{actId}": {
+      "schema": { "$ref": "#/entities/Activity" },
+      "description": "User documented activities owned by users."
+    },
+    "/galleries/{galId}": {
+      "schema": { "$ref": "#/entities/GalleryItem" },
+      "description": "User gallery items owned by users."
+    },
+    "/logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable activity audit logs."
+    },
+    "/settings/{userId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Per-user application preferences."
+    },
+    "/publicPortfolios/{username}": {
+      "schema": { "$ref": "#/entities/PublicPortfolio" },
+      "description": "Sanitized public portfolio pages accessible by username slug."
+    },
+    "/fileBlobs/{blobId}": {
+      "schema": { "$ref": "#/entities/FileBlob" },
+      "description": "Metadata for chunked file uploads stored in Firestore."
+    },
+    "/fileBlobs/{blobId}/chunks/{chunkId}": {
+      "schema": { "$ref": "#/entities/FileBlobChunk" },
+      "description": "Individual chunks for a chunked file upload."
+    }
+  }
+}
