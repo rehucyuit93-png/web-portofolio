@@ -22,6 +22,16 @@ interface SettingsSectionProps {
   activities: Activity[];
   galleries: GalleryItem[];
   logs: AuditLog[];
+  accountEmail?: string;
+  emailVerified?: boolean;
+  sendingVerify?: boolean;
+  checkingVerify?: boolean;
+  applyingManualLink?: boolean;
+  verifyCooldown?: number;
+  verifyFeedback?: { tone: 'success' | 'info' | 'error'; text: string } | null;
+  onSendVerification?: () => Promise<void>;
+  onCheckVerification?: () => Promise<void>;
+  onApplyVerification?: (rawInput: string) => Promise<{ verified?: boolean; error?: string }>;
   onUpdateSettings: (patch: Partial<Omit<UserSettings, 'uid' | 'updatedAt'>>) => Promise<void>;
   onNotify: (type: 'success' | 'error' | 'info', message: string) => void;
 }
@@ -35,12 +45,24 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   activities,
   galleries,
   logs,
+  accountEmail,
+  emailVerified,
+  sendingVerify = false,
+  checkingVerify = false,
+  applyingManualLink = false,
+  verifyCooldown = 0,
+  verifyFeedback = null,
+  onSendVerification,
+  onCheckVerification,
+  onApplyVerification,
   onUpdateSettings,
   onNotify,
 }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPwd, setUpdatingPwd] = useState(false);
+  const [manualInput, setManualInput] = useState('');
+  const [showManualBox, setShowManualBox] = useState(false);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,87 +99,210 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {/* Appearance & Notification Preferences */}
-      <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
-            Tampilan & Notifikasi
-          </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Sesuaikan tema antarmuka dan preferensi pemberitahuan portofolio Anda.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                Tema Aplikasi
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Pilih Mode Terang atau Mode Gelap yang nyaman di mata
-              </p>
-            </div>
-            <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
-              <button
-                type="button"
-                onClick={() => onUpdateSettings({ theme: 'light' })}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                  settings.theme === 'light'
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-              >
-                Terang
-              </button>
-              <button
-                type="button"
-                onClick={() => onUpdateSettings({ theme: 'dark' })}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                  settings.theme === 'dark'
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-              >
-                Gelap
-              </button>
-            </div>
+      {/* Left column: Appearance Preferences + Account Email Verification */}
+      <div className="space-y-6">
+        <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              Tampilan & Notifikasi
+            </h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Sesuaikan tema antarmuka dan preferensi pemberitahuan portofolio Anda.
+            </p>
           </div>
 
-          <label className="flex items-center justify-between rounded-xl border border-slate-200 p-4 cursor-pointer dark:border-slate-800">
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                Notifikasi Email
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Terima ringkasan pembaruan akun dan keamanan
-              </p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Tema Aplikasi
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Pilih Mode Terang atau Mode Gelap yang nyaman di mata
+                </p>
+              </div>
+              <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings({ theme: 'light' })}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                    settings.theme === 'light'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  Terang
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings({ theme: 'dark' })}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                    settings.theme === 'dark'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  Gelap
+                </button>
+              </div>
             </div>
-            <input
-              type="checkbox"
-              checked={settings.emailNotifications}
-              onChange={(e) => onUpdateSettings({ emailNotifications: e.target.checked })}
-              className="h-4 w-4 rounded border-slate-300 text-blue-600"
-            />
-          </label>
 
-          <label className="flex items-center justify-between rounded-xl border border-slate-200 p-4 cursor-pointer dark:border-slate-800">
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                Notifikasi Aktivitas
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Catat dan tampilkan umpan balik setiap unggahan berkas
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.activityAlerts}
-              onChange={(e) => onUpdateSettings({ activityAlerts: e.target.checked })}
-              className="h-4 w-4 rounded border-slate-300 text-blue-600"
-            />
-          </label>
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 p-4 cursor-pointer dark:border-slate-800">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Notifikasi Email
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Terima ringkasan pembaruan akun dan keamanan
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.emailNotifications}
+                onChange={(e) => onUpdateSettings({ emailNotifications: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600"
+              />
+            </label>
+
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 p-4 cursor-pointer dark:border-slate-800">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Notifikasi Aktivitas
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Catat dan tampilkan umpan balik setiap unggahan berkas
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.activityAlerts}
+                onChange={(e) => onUpdateSettings({ activityAlerts: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600"
+              />
+            </label>
+          </div>
         </div>
+
+        {/* Account Status & Optional Email Verification */}
+        {accountEmail && (
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Status Akun & Verifikasi Email
+                </h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Alamat email terdaftar: <strong className="text-slate-700 dark:text-slate-200">{accountEmail}</strong>
+                </p>
+              </div>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
+                  emailVerified
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    : 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                }`}
+              >
+                <i
+                  className={emailVerified ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-info'}
+                  aria-hidden="true"
+                />
+                <span>{emailVerified ? 'Email Terverifikasi' : 'Opsional — Belum Terverifikasi'}</span>
+              </span>
+            </div>
+
+            {emailVerified ? (
+              <p className="rounded-xl bg-emerald-50/70 px-3.5 py-2.5 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                Akun dan alamat email Anda sudah terverifikasi penuh. Seluruh fitur portofolio dapat digunakan tanpa batas.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                  Akun Anda <strong>sudah aktif</strong> untuk seluruh fitur portofolio. Verifikasi email bersifat opsional sebagai keamanan tambahan.
+                  Jika memicu batas pengiriman Firebase (<code className="text-[11px]">too-many-requests</code>), tunggu hitungan mundur 2 menit sebelum mengirim ulang.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {onSendVerification && (
+                    <button
+                      type="button"
+                      disabled={sendingVerify || verifyCooldown > 0}
+                      onClick={onSendVerification}
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {sendingVerify
+                        ? 'Mengirim...'
+                        : verifyCooldown > 0
+                          ? `Tunggu ${verifyCooldown}d`
+                          : 'Kirim Email Verifikasi'}
+                    </button>
+                  )}
+                  {onCheckVerification && (
+                    <button
+                      type="button"
+                      disabled={checkingVerify}
+                      onClick={onCheckVerification}
+                      className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      {checkingVerify ? 'Memeriksa...' : 'Cek Status'}
+                    </button>
+                  )}
+                  {onApplyVerification && (
+                    <button
+                      type="button"
+                      onClick={() => setShowManualBox((v) => !v)}
+                      className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      {showManualBox ? 'Sembunyikan' : 'Tempel Tautan'}
+                    </button>
+                  )}
+                </div>
+
+                {verifyFeedback && (
+                  <p
+                    className={`rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ${
+                      verifyFeedback.tone === 'error'
+                        ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'
+                        : verifyFeedback.tone === 'success'
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+                          : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                    }`}
+                  >
+                    {verifyFeedback.text}
+                  </p>
+                )}
+
+                {showManualBox && onApplyVerification && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const res = await onApplyVerification(manualInput);
+                      if (res?.verified) {
+                        setManualInput('');
+                        setShowManualBox(false);
+                      }
+                    }}
+                    className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
+                  >
+                    <input
+                      type="text"
+                      value={manualInput}
+                      onChange={(e) => setManualInput(e.target.value)}
+                      placeholder="Tempel tautan verifikasi (?mode=verifyEmail&oobCode=...)"
+                      className="min-w-[220px] flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                    />
+                    <button
+                      type="submit"
+                      disabled={applyingManualLink || !manualInput.trim()}
+                      className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-blue-600 dark:hover:bg-blue-700"
+                    >
+                      {applyingManualLink ? 'Mengaktifkan...' : 'Aktifkan'}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Password & Data Backup */}

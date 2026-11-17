@@ -61,6 +61,7 @@ interface DashboardShellProps {
     sent: boolean;
     alreadyVerified?: boolean;
     usedFallbackDomain?: boolean;
+    rateLimited?: boolean;
     error?: string;
   }>;
   onRefreshVerification?: () => Promise<{ verified: boolean; error?: string }>;
@@ -82,14 +83,21 @@ const MENU_ITEMS: Array<{ id: DashboardSection; label: string; icon: string }> =
 
 export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [dismissedVerifyBanner, setDismissedVerifyBanner] = useState(false);
+  const [dismissedVerifyBanner, setDismissedVerifyBanner] = useState<boolean>(
+    () => localStorage.getItem(`verify_banner_dismissed_${props.account.uid}`) === '1'
+  );
   const [sendingVerify, setSendingVerify] = useState(false);
   const [checkingVerify, setCheckingVerify] = useState(false);
   const [verifyCooldown, setVerifyCooldown] = useState<number>(() => {
-    const raw = localStorage.getItem(`verify_sent_${props.account.uid}`);
-    if (!raw) return 0;
-    const elapsed = Math.floor((Date.now() - Number(raw)) / 1000);
-    return elapsed >= 0 && elapsed < 60 ? 60 - elapsed : 0;
+    const untilRaw = localStorage.getItem(`verify_cooldown_until_${props.account.uid}`);
+    if (untilRaw) {
+      const remaining = Math.ceil((Number(untilRaw) - Date.now()) / 1000);
+      return remaining > 0 ? remaining : 0;
+    }
+    const sentRaw = localStorage.getItem(`verify_sent_${props.account.uid}`);
+    if (!sentRaw) return 0;
+    const elapsed = Math.floor((Date.now() - Number(sentRaw)) / 1000);
+    return elapsed >= 0 && elapsed < 90 ? 90 - elapsed : 0;
   });
   const [verifyFeedback, setVerifyFeedback] = useState<{
     tone: 'success' | 'info' | 'error';
@@ -109,10 +117,90 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
   useEffect(() => {
     if (verifyCooldown <= 0) return;
     const timer = setInterval(() => {
-      setVerifyCooldown((c) => (c > 0 ? c - 1 : 0));
+      const untilRaw = localStorage.getItem(`verify_cooldown_until_${props.account.uid}`);
+      if (untilRaw) {
+        const remaining = Math.ceil((Number(untilRaw) - Date.now()) / 1000);
+        setVerifyCooldown(remaining > 0 ? remaining : 0);
+      } else {
+        setVerifyCooldown((c) => (c > 0 ? c - 1 : 0));
+      }
     }, 1000);
     return () => clearInterval(timer);
-  }, [verifyCooldown]);
+  }, [verifyCooldown, props.account.uid]);
+
+  const handleSendVerification = async () => {
+    if (!props.onSendVerificationEmail || sendingVerify || verifyCooldown > 0) return;
+    setSendingVerify(true);
+    try {
+      const res = await props.onSendVerificationEmail();
+      if (res?.alreadyVerified) {
+        setVerifyFeedback({
+          tone: 'success',
+          text: 'Email Anda ternyata sudah terverifikasi!',
+        });
+      } else if (res?.sent) {
+        const until = Date.now() + 90_000;
+        localStorage.setItem(`verify_cooldown_until_${props.account.uid}`, String(until));
+        setVerifyCooldown(90);
+        setVerifyFeedback({
+          tone: 'success',
+          text: `Email verifikasi berhasil dikirim ke ${props.account.email}. Cek Kotak Masuk, folder Spam, atau tab Promosi, lalu klik tautannya. Status akan otomatis diperbarui.`,
+        });
+      } else if (res?.rateLimited) {
+        const until = Date.now() + 120_000;
+        localStorage.setItem(`verify_cooldown_until_${props.account.uid}`, String(until));
+        setVerifyCooldown(120);
+        setVerifyFeedback({
+          tone: 'error',
+          text:
+            res.error ||
+            'Terlalu banyak permintaan pengiriman email dalam waktu singkat. Tunggu hitungan mundur selesai (2 menit) sebelum meminta ulang, dan cek folder Spam/Promosi untuk email sebelumnya.',
+        });
+      } else if (res?.error) {
+        setVerifyFeedback({
+          tone: 'error',
+          text: res.error,
+        });
+      }
+    } finally {
+      setSendingVerify(false);
+    }
+  };
+
+  const handleCheckVerification = async () => {
+    if (!props.onRefreshVerification || checkingVerify) return;
+    setCheckingVerify(true);
+    try {
+      const res = await props.onRefreshVerification();
+      if (res && !res.verified) {
+        setVerifyFeedback({
+          tone: res.error ? 'error' : 'info',
+          text:
+            res.error ||
+            'Status masih belum terverifikasi. Pastikan Anda sudah mengeklik tautan aktivasi di email (cek juga folder Spam/Promosi), lalu klik Cek Status lagi.',
+        });
+      }
+    } finally {
+      setCheckingVerify(false);
+    }
+  };
+
+  const handleApplyVerification = async (rawInput: string) => {
+    if (!props.onApplyVerificationLink) return { verified: false };
+    setApplyingManualLink(true);
+    try {
+      const res = await props.onApplyVerificationLink(rawInput);
+      if (res?.error) {
+        setVerifyFeedback({ tone: 'error', text: res.error });
+      } else if (res?.verified) {
+        setManualActivationInput('');
+        setShowManualLinkBox(false);
+      }
+      return res;
+    } finally {
+      setApplyingManualLink(false);
+    }
+  };
 
   const activeLabel =
     props.activeSection === 'admin'
@@ -304,37 +392,13 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
                     <button
                       type="button"
                       disabled={sendingVerify || verifyCooldown > 0}
-                      onClick={async () => {
-                        setSendingVerify(true);
-                        try {
-                          const res = await props.onSendVerificationEmail?.();
-                          if (res?.alreadyVerified) {
-                            setVerifyFeedback({
-                              tone: 'success',
-                              text: 'Email Anda ternyata sudah terverifikasi!',
-                            });
-                          } else if (res?.sent) {
-                            setVerifyCooldown(60);
-                            setVerifyFeedback({
-                              tone: 'success',
-                              text: `Email verifikasi berhasil dikirim ke ${props.account.email}. Cek Kotak Masuk, folder Spam, atau tab Promosi, lalu klik tautannya. Status akan otomatis diperbarui saat Anda kembali ke tab ini.`,
-                            });
-                          } else if (res?.error) {
-                            setVerifyFeedback({
-                              tone: 'error',
-                              text: res.error,
-                            });
-                          }
-                        } finally {
-                          setSendingVerify(false);
-                        }
-                      }}
+                      onClick={handleSendVerification}
                       className="rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
                     >
                       {sendingVerify
                         ? 'Mengirim...'
                         : verifyCooldown > 0
-                          ? `Kirim Ulang (${verifyCooldown}d)`
+                          ? `Tunggu ${verifyCooldown}d`
                           : 'Kirim Email Verifikasi'}
                     </button>
                   )}
@@ -342,22 +406,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
                     <button
                       type="button"
                       disabled={checkingVerify}
-                      onClick={async () => {
-                        setCheckingVerify(true);
-                        try {
-                          const res = await props.onRefreshVerification?.();
-                          if (res && !res.verified) {
-                            setVerifyFeedback({
-                              tone: res.error ? 'error' : 'info',
-                              text:
-                                res.error ||
-                                'Status masih belum terverifikasi. Pastikan Anda sudah mengeklik tautan aktivasi di email (cek juga folder Spam/Promosi), lalu klik Cek Status lagi.',
-                            });
-                          }
-                        } finally {
-                          setCheckingVerify(false);
-                        }
-                      }}
+                      onClick={handleCheckVerification}
                       className="rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100"
                     >
                       {checkingVerify ? 'Memeriksa...' : 'Cek Status'}
@@ -374,7 +423,14 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
                   )}
                   <button
                     type="button"
-                    onClick={() => setDismissedVerifyBanner(true)}
+                    onClick={() => {
+                      localStorage.setItem(`verify_banner_dismissed_${props.account.uid}`, '1');
+                      setDismissedVerifyBanner(true);
+                      props.onNotify(
+                        'info',
+                        'Pemberitahuan verifikasi disembunyikan. Opsi verifikasi tetap tersedia di menu Pengaturan.'
+                      );
+                    }}
                     className="rounded-lg px-2 py-1.5 font-medium text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
                     aria-label="Tutup pemberitahuan"
                   >
@@ -401,18 +457,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    setApplyingManualLink(true);
-                    try {
-                      const res = await props.onApplyVerificationLink?.(manualActivationInput);
-                      if (res?.error) {
-                        setVerifyFeedback({ tone: 'error', text: res.error });
-                      } else if (res?.verified) {
-                        setManualActivationInput('');
-                        setShowManualLinkBox(false);
-                      }
-                    } finally {
-                      setApplyingManualLink(false);
-                    }
+                    await handleApplyVerification(manualActivationInput);
                   }}
                   className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-amber-200/80 pt-2.5 dark:border-amber-800/60"
                 >
@@ -547,6 +592,16 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
                 activities={props.activities}
                 galleries={props.galleries}
                 logs={props.logs}
+                accountEmail={props.account.email}
+                emailVerified={props.emailVerified}
+                sendingVerify={sendingVerify}
+                checkingVerify={checkingVerify}
+                applyingManualLink={applyingManualLink}
+                verifyCooldown={verifyCooldown}
+                verifyFeedback={verifyFeedback}
+                onSendVerification={props.onSendVerificationEmail ? handleSendVerification : undefined}
+                onCheckVerification={props.onRefreshVerification ? handleCheckVerification : undefined}
+                onApplyVerification={props.onApplyVerificationLink ? handleApplyVerification : undefined}
                 onUpdateSettings={props.onUpdateSettings}
                 onNotify={props.onNotify}
               />

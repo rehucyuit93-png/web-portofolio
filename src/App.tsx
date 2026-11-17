@@ -215,6 +215,8 @@ export default function App() {
       setFirebaseUser(auth.currentUser || user);
       setEmailVerified(true);
       localStorage.removeItem(`verify_sent_${user.uid}`);
+      localStorage.removeItem(`verify_cooldown_until_${user.uid}`);
+      localStorage.removeItem(`verify_banner_dismissed_${user.uid}`);
       await hydrateUserSession(auth.currentUser || user);
       if (showSuccessToast) {
         notify('success', 'Email Anda berhasil diverifikasi dan diaktifkan!');
@@ -321,11 +323,11 @@ export default function App() {
     return () => unsub();
   }, [hydrateUserSession, notify]);
 
-  // Auto-check email verification when user switches back from their email client tab
+  // Auto-check email verification when user switches back from email client tab or verifies on another device
   useEffect(() => {
     if (!firebaseUser || emailVerified) return;
 
-    const checkOnFocus = async () => {
+    const runVerificationCheck = async () => {
       if (!auth.currentUser || !navigator.onLine) return;
       if (document.visibilityState === 'hidden') return;
       const now = Date.now();
@@ -338,15 +340,25 @@ export default function App() {
           await syncVerifiedUserState(auth.currentUser, true);
         }
       } catch {
-        // Ignore transient focus check failures
+        // Ignore transient focus/poll check failures
       }
     };
 
-    window.addEventListener('focus', checkOnFocus);
-    document.addEventListener('visibilitychange', checkOnFocus);
+    const pollInterval = window.setInterval(() => {
+      const sentAtRaw = localStorage.getItem(`verify_sent_${firebaseUser.uid}`);
+      if (!sentAtRaw) return;
+      const ageMs = Date.now() - Number(sentAtRaw);
+      if (ageMs >= 0 && ageMs <= 10 * 60 * 1000) {
+        void runVerificationCheck();
+      }
+    }, 20000);
+
+    window.addEventListener('focus', runVerificationCheck);
+    document.addEventListener('visibilitychange', runVerificationCheck);
     return () => {
-      window.removeEventListener('focus', checkOnFocus);
-      document.removeEventListener('visibilitychange', checkOnFocus);
+      window.clearInterval(pollInterval);
+      window.removeEventListener('focus', runVerificationCheck);
+      document.removeEventListener('visibilitychange', runVerificationCheck);
     };
   }, [firebaseUser, emailVerified, syncVerifiedUserState]);
 
@@ -584,22 +596,32 @@ export default function App() {
           if (!auth.currentUser) {
             return { sent: false, error: 'Sesi pengguna tidak ditemukan. Silakan masuk ulang.' };
           }
+          const uid = auth.currentUser.uid;
           try {
             const res = await sendVerificationEmailSafe(auth.currentUser);
             if (res.alreadyVerified) {
               await syncVerifiedUserState(auth.currentUser, true);
               return { sent: false, alreadyVerified: true };
             }
-            localStorage.setItem(`verify_sent_${auth.currentUser.uid}`, String(Date.now()));
+            const now = Date.now();
+            localStorage.setItem(`verify_sent_${uid}`, String(now));
+            localStorage.setItem(`verify_cooldown_until_${uid}`, String(now + 90_000));
             notify(
               'success',
               `Email aktivasi dikirim ke ${auth.currentUser.email}. Periksa Kotak Masuk atau folder Spam.`
             );
             return { sent: true, usedFallbackDomain: res.usedFallbackDomain };
           } catch (err: unknown) {
-            const msg = formatAuthErrorMessage(err).message;
-            notify('error', msg);
-            return { sent: false, error: msg };
+            const formatted = formatAuthErrorMessage(err);
+            if (formatted.isRateLimited) {
+              localStorage.setItem(`verify_cooldown_until_${uid}`, String(Date.now() + 120_000));
+            }
+            notify('error', formatted.message);
+            return {
+              sent: false,
+              rateLimited: formatted.isRateLimited,
+              error: formatted.message,
+            };
           }
         }}
         onRefreshVerification={async () => {

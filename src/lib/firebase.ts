@@ -86,6 +86,18 @@ export async function sendVerificationEmailSafe(
     return { usedFallbackDomain: false, alreadyVerified: true };
   }
 
+  const host = typeof window !== 'undefined' ? window.location.hostname : '';
+  const cacheKey = host ? `continue_uri_blocked_${host}` : '';
+  const skipCustomContinueUrl =
+    typeof window !== 'undefined' && cacheKey
+      ? sessionStorage.getItem(cacheKey) === '1'
+      : false;
+
+  if (skipCustomContinueUrl) {
+    await sendEmailVerification(user);
+    return { usedFallbackDomain: true, alreadyVerified: false };
+  }
+
   try {
     await sendEmailVerification(user, {
       url: `${window.location.origin}/?verified=1`,
@@ -94,6 +106,9 @@ export async function sendVerificationEmailSafe(
     return { usedFallbackDomain: false, alreadyVerified: false };
   } catch (err: unknown) {
     if (isContinueUriOrDomainError(err)) {
+      if (typeof window !== 'undefined' && cacheKey) {
+        sessionStorage.setItem(cacheKey, '1');
+      }
       // Fallback to Firebase's default authDomain handler when current domain isn't allowlisted yet
       await sendEmailVerification(user);
       return { usedFallbackDomain: true, alreadyVerified: false };
@@ -103,6 +118,18 @@ export async function sendVerificationEmailSafe(
 }
 
 export async function sendPasswordResetSafe(email: string): Promise<void> {
+  const host = typeof window !== 'undefined' ? window.location.hostname : '';
+  const cacheKey = host ? `continue_uri_blocked_${host}` : '';
+  const skipCustomContinueUrl =
+    typeof window !== 'undefined' && cacheKey
+      ? sessionStorage.getItem(cacheKey) === '1'
+      : false;
+
+  if (skipCustomContinueUrl) {
+    await sendPasswordResetEmail(auth, email);
+    return;
+  }
+
   try {
     await sendPasswordResetEmail(auth, email, {
       url: window.location.origin,
@@ -110,6 +137,9 @@ export async function sendPasswordResetSafe(email: string): Promise<void> {
     });
   } catch (err: unknown) {
     if (isContinueUriOrDomainError(err)) {
+      if (typeof window !== 'undefined' && cacheKey) {
+        sessionStorage.setItem(cacheKey, '1');
+      }
       await sendPasswordResetEmail(auth, email);
       return;
     }
@@ -121,17 +151,19 @@ export function formatAuthErrorMessage(err: unknown): {
   message: string;
   isUnauthorizedDomain?: boolean;
   isProviderDisabled?: boolean;
+  isRateLimited?: boolean;
   domain?: string;
 } {
-  const code = (err as { code?: string })?.code || '';
+  const code = ((err as { code?: string })?.code || '').toLowerCase();
   const raw = err instanceof Error ? err.message : String(err);
+  const rawLower = raw.toLowerCase();
   const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
 
   if (
     code === 'auth/unauthorized-domain' ||
     code === 'auth/unauthorized-continue-uri' ||
-    raw.includes('auth/unauthorized-domain') ||
-    raw.includes('auth/unauthorized-continue-uri')
+    rawLower.includes('auth/unauthorized-domain') ||
+    rawLower.includes('auth/unauthorized-continue-uri')
   ) {
     return {
       message: `Domain "${currentHost}" belum diizinkan di Firebase Authentication. Tambahkan domain ini pada Firebase Console -> Authentication -> Settings -> Authorized domains.`,
@@ -146,10 +178,11 @@ export function formatAuthErrorMessage(err: unknown): {
       isProviderDisabled: true,
     };
   }
-  if (code === 'auth/too-many-requests') {
+  if (code === 'auth/too-many-requests' || rawLower.includes('too-many-requests')) {
     return {
       message:
-        'Terlalu banyak permintaan pengiriman email dalam waktu singkat. Tunggu 1-2 menit sebelum mencoba lagi.',
+        'Terlalu banyak permintaan pengiriman email dalam waktu singkat. Tunggu 2 menit sebelum mencoba lagi, dan cek Kotak Masuk/Spam/Promosi untuk email yang sudah terkirim sebelumnya.',
+      isRateLimited: true,
     };
   }
   if (code === 'auth/user-token-expired') {
