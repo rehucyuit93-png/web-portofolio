@@ -197,8 +197,8 @@ async function createInlineFallback(
 ): Promise<UploadResult> {
   onProgress?.(25);
   if (isImageFile(file)) {
-    const maxDim = folder === 'profile-photo' ? 360 : 880;
-    const maxChars = folder === 'profile-photo' ? 90000 : 145000;
+    const maxDim = folder === 'profile-photo' ? 560 : 880;
+    const maxChars = folder === 'profile-photo' ? 120000 : 145000;
     const dataUrl = await compressImageToDataUrl(file, maxDim, maxChars);
     onProgress?.(100);
     return {
@@ -380,16 +380,26 @@ export function dataUrlToBlobUrl(dataUrl: string): string {
 
 export async function resolveStoredFileUrl(
   url: string
-): Promise<{ resolvedUrl: string; isObjectUrl: boolean }> {
+): Promise<{ resolvedUrl: string; isObjectUrl: boolean; mimeType?: string }> {
   if (!url) return { resolvedUrl: '', isObjectUrl: false };
   if (url.startsWith('data:')) {
-    return { resolvedUrl: dataUrlToBlobUrl(url), isObjectUrl: true };
+    const header = url.split(',')[0] || '';
+    const mimeMatch = header.match(/data:([^;]+)/);
+    return {
+      resolvedUrl: dataUrlToBlobUrl(url),
+      isObjectUrl: true,
+      mimeType: mimeMatch ? mimeMatch[1] : undefined,
+    };
   }
   if (url.startsWith('firestore-blob://')) {
     const blobId = url.replace('firestore-blob://', '').trim();
     const cached = BLOB_CACHE.get(blobId);
     if (cached) {
-      return { resolvedUrl: URL.createObjectURL(cached), isObjectUrl: true };
+      return {
+        resolvedUrl: URL.createObjectURL(cached),
+        isObjectUrl: true,
+        mimeType: cached.type || undefined,
+      };
     }
     const parentSnap = await getDoc(doc(db, 'fileBlobs', blobId));
     if (!parentSnap.exists()) {
@@ -407,9 +417,10 @@ export async function resolveStoredFileUrl(
     if (!fullBase64) {
       throw new Error('Isi berkas kosong atau rusak.');
     }
-    const blob = base64ToBlob(fullBase64, meta.mimeType || 'application/octet-stream');
+    const mimeType = meta.mimeType || 'application/octet-stream';
+    const blob = base64ToBlob(fullBase64, mimeType);
     BLOB_CACHE.set(blobId, blob);
-    return { resolvedUrl: URL.createObjectURL(blob), isObjectUrl: true };
+    return { resolvedUrl: URL.createObjectURL(blob), isObjectUrl: true, mimeType };
   }
   return { resolvedUrl: url, isObjectUrl: false };
 }

@@ -312,12 +312,12 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top Header */}
         <header className="no-print glass-surface sticky top-0 z-30 border-b border-slate-200/80 dark:border-slate-800/80">
-          <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
-                className="rounded-xl border border-slate-200 p-2 text-slate-600 lg:hidden dark:border-slate-700 dark:text-slate-300"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 lg:hidden dark:border-slate-700 dark:text-slate-300 shrink-0"
                 aria-label="Buka menu navigasi"
               >
                 <i className="fa-solid fa-bars" aria-hidden="true" />
@@ -329,7 +329,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <PWAInstallButton compact />
 
               <button
@@ -340,7 +340,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
                   })
                 }
                 title={props.settings.theme === 'dark' ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 aria-label="Ganti tema"
               >
                 <i
@@ -352,7 +352,8 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
               <button
                 type="button"
                 onClick={() => handleNav('profile')}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1 pr-3 pl-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1 pr-2.5 pl-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 sm:pr-3 sm:pl-1.5 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                aria-label="Buka profil saya"
               >
                 <img
                   src={
@@ -362,7 +363,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
                   }
                   alt={props.profile.fullName}
                   referrerPolicy="no-referrer"
-                  className="h-7 w-7 rounded-lg object-cover"
+                  className="h-8 w-8 rounded-lg bg-slate-100 object-contain p-0.5 dark:bg-slate-900"
                 />
                 <span className="hidden max-w-[130px] truncate sm:inline">
                   {props.profile.fullName}
@@ -373,17 +374,17 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
         </header>
 
         {/* Viewport */}
-        <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6">
+        <main className="mx-auto w-full max-w-7xl flex-1 p-3.5 pb-24 sm:p-6 lg:pb-8">
           {props.emailVerified === false && !dismissedVerifyBanner && (
-            <div className="no-print mb-5 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-200">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <i className="fa-solid fa-envelope-open-text mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                  <div>
-                    <p>
+            <div className="no-print mb-5 rounded-2xl border border-amber-200 bg-amber-50/90 p-3.5 text-xs text-amber-900 sm:px-4 sm:py-3 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-200">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <i className="fa-solid fa-envelope-open-text mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="break-words leading-relaxed">
                       Akun Anda sudah aktif untuk seluruh fitur portofolio. Untuk verifikasi alamat email{' '}
-                      <strong>{props.account.email}</strong> (opsional), kirim tautan verifikasi lalu klik tautan dari{' '}
-                      <span className="font-mono-tabular font-semibold">noreply@gen-lang-client-0131469651.firebaseapp.com</span>.
+                      <strong className="break-all">{props.account.email}</strong> (opsional), kirim tautan verifikasi lalu klik tautan dari{' '}
+                      <span className="font-mono-tabular break-all font-semibold">noreply@gen-lang-client-0131469651.firebaseapp.com</span>.
                     </p>
                   </div>
                 </div>
@@ -615,6 +616,46 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
             )}
           </motion.div>
         </main>
+
+        {/* Mobile Bottom Thumb Navigation Bar */}
+        <nav
+          aria-label="Navigasi cepat mobile"
+          className="no-print fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/90 bg-white/95 pb-safe backdrop-blur-md lg:hidden dark:border-slate-800 dark:bg-slate-900/95"
+        >
+          <div className="grid h-14 grid-cols-5 items-center">
+            {[
+              { id: 'dashboard' as const, label: 'Beranda', icon: 'fa-solid fa-table-columns' },
+              { id: 'certificates' as const, label: 'Sertifikat', icon: 'fa-solid fa-certificate' },
+              { id: 'documents' as const, label: 'Dokumen', icon: 'fa-solid fa-folder-open' },
+              { id: 'profile' as const, label: 'Profil', icon: 'fa-solid fa-user' },
+            ].map((tab) => {
+              const isActive = props.activeSection === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleNav(tab.id)}
+                  className={`flex h-full flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
+                    isActive
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <i className={`${tab.icon} text-base`} aria-hidden="true" />
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="flex h-full flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              <i className="fa-solid fa-bars text-base" aria-hidden="true" />
+              <span>Menu</span>
+            </button>
+          </div>
+        </nav>
       </div>
     </div>
   );

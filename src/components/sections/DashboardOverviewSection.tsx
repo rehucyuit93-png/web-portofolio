@@ -81,7 +81,7 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
   return (
     <div className="space-y-6">
       {/* Identity & Completeness Hero Card */}
-      <section className="glass-panel rounded-2xl border border-slate-200 p-6 dark:border-slate-800">
+      <section className="glass-panel rounded-2xl border border-slate-200 p-4 sm:p-6 dark:border-slate-800">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <img
@@ -92,9 +92,9 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
               }
               alt={profile?.fullName || account.displayName}
               referrerPolicy="no-referrer"
-              className="h-20 w-20 rounded-2xl border border-slate-200 object-cover dark:border-slate-700"
+              className="h-24 w-24 shrink-0 rounded-2xl border border-slate-200 bg-slate-100 object-contain p-1 sm:h-28 sm:w-28 dark:border-slate-700 dark:bg-slate-800"
             />
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span className="font-semibold text-blue-600 capitalize dark:text-blue-400">
                   {account.role}
@@ -154,7 +154,7 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
       </section>
 
       {/* 4 Core KPI Stat Cards */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <button
           type="button"
           onClick={() => onNavigate('documents')}
@@ -235,7 +235,7 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
       {/* Public Share QR + Quick Export & Recent Logs */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* QR & Share Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 lg:col-span-5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-5 dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">
             Portofolio Publik & QR Code
           </h2>
@@ -247,8 +247,8 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
             <div ref={qrRef} className="rounded-lg bg-white p-2 shadow-sm shrink-0">
               <QRCodeCanvas value={publicUrl} size={112} includeMargin />
             </div>
-            <div className="mt-3 flex-1 text-center sm:mt-0 sm:text-left min-w-0">
-              <p className="text-xs font-semibold text-slate-900 dark:text-white">
+            <div className="mt-3 flex-1 text-center sm:mt-0 sm:text-left min-w-0 w-full">
+              <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
                 /portfolio/{username}
               </p>
               <p className="mt-1 truncate font-mono-tabular text-[11px] text-slate-500 dark:text-slate-400">
@@ -278,7 +278,7 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
               href={`https://wa.me/?text=${encodeURIComponent(`Portofolio Digital ${profile?.fullName || account.displayName}: ${publicUrl}`)}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200 py-2 text-[11px] sm:text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <i className="fa-brands fa-whatsapp text-emerald-600" aria-hidden="true" />
               <span>WhatsApp</span>
@@ -287,7 +287,7 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200 py-2 text-[11px] sm:text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <i className="fa-brands fa-facebook text-blue-600" aria-hidden="true" />
               <span>Facebook</span>
@@ -296,7 +296,7 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
               href={`https://t.me/share/url?url=${encodeURIComponent(publicUrl)}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200 py-2 text-[11px] sm:text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <i className="fa-brands fa-telegram text-sky-500" aria-hidden="true" />
               <span>Telegram</span>
@@ -305,7 +305,7 @@ export const DashboardOverviewSection: React.FC<DashboardOverviewProps> = ({
         </div>
 
         {/* Quick Exports & Activity */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 lg:col-span-7 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-7 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">

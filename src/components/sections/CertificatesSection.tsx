@@ -43,11 +43,13 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [previewCert, setPreviewCert] = useState<Certificate | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState('');
+  const [previewMimeType, setPreviewMimeType] = useState('');
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
     if (!previewCert) {
       setPreviewBlobUrl('');
+      setPreviewMimeType('');
       setLoadingPreview(false);
       return;
     }
@@ -55,13 +57,14 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
     let revokeUrl = '';
     setLoadingPreview(true);
     resolveStoredFileUrl(previewCert.fileUrl)
-      .then(({ resolvedUrl, isObjectUrl }) => {
+      .then(({ resolvedUrl, isObjectUrl, mimeType }) => {
         if (!active) {
           if (isObjectUrl && resolvedUrl) URL.revokeObjectURL(resolvedUrl);
           return;
         }
         if (isObjectUrl) revokeUrl = resolvedUrl;
         setPreviewBlobUrl(resolvedUrl);
+        setPreviewMimeType(mimeType || '');
       })
       .catch((err: unknown) => {
         if (active) {
@@ -176,22 +179,22 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:flex-row sm:items-center sm:p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[200px]">
             <i className="fa-solid fa-magnifying-glass absolute top-1/2 left-3.5 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari nama kegiatan atau penyelenggara..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-3 pl-9 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-9 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
           </div>
           <select
             value={yearFilter}
             onChange={(e) => setYearFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono-tabular text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
           >
             <option value="all">Semua Tahun</option>
             {years.map((y) => (
@@ -205,7 +208,7 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 whitespace-nowrap shrink-0"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 whitespace-nowrap sm:w-auto shrink-0"
         >
           <i className="fa-solid fa-plus" aria-hidden="true" />
           <span>Tambah Sertifikat</span>
@@ -296,16 +299,21 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-4 backdrop-blur-sm">
           <form
             onSubmit={handleSubmit}
-            className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {editing ? 'Edit Sertifikat' : 'Tambah Sertifikat'}
               </h3>
-              <button type="button" onClick={() => setShowModal(false)} className="text-slate-400">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="Tutup modal"
+              >
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
@@ -324,8 +332,8 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Penyelenggara
                 </label>
@@ -443,16 +451,40 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
       )}
 
       {previewCert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">{previewCert.eventName}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-2.5 sm:p-4 backdrop-blur-sm"
+          onClick={() => setPreviewCert(null)}
+        >
+          <div
+            className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4 dark:border-slate-800">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                  {previewCert.eventName}
+                </h3>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                   {previewCert.organizer} · {previewCert.year}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    openOrDownloadFile(
+                      previewCert.fileUrl,
+                      previewCert.fileName || `${previewCert.eventName}.pdf`,
+                      'open'
+                    ).catch((err: unknown) =>
+                      onNotify('error', err instanceof Error ? err.message : 'Gagal membuka sertifikat.')
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <i className="fa-solid fa-up-right-from-square" aria-hidden="true" />
+                  <span className="hidden sm:inline">Buka Penuh</span>
+                </button>
                 <button
                   type="button"
                   onClick={() =>
@@ -460,9 +492,11 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
                       previewCert.fileUrl,
                       previewCert.fileName || `${previewCert.eventName}.pdf`,
                       'download'
+                    ).catch((err: unknown) =>
+                      onNotify('error', err instanceof Error ? err.message : 'Gagal mengunduh sertifikat.')
                     )
                   }
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
                 >
                   <i className="fa-solid fa-download" aria-hidden="true" />
                   <span>Unduh</span>
@@ -470,7 +504,7 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setPreviewCert(null)}
-                  className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   aria-label="Tutup pratinjau"
                 >
                   <i className="fa-solid fa-xmark" aria-hidden="true" />
@@ -478,26 +512,62 @@ export const CertificatesSection: React.FC<CertificatesSectionProps> = ({
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-5">
+            <div className="flex-1 overflow-auto p-3.5 sm:p-5">
               {loadingPreview ? (
-                <div className="flex h-[55vh] flex-col items-center justify-center gap-3 text-xs text-slate-500">
+                <div className="flex h-[45dvh] sm:h-[55vh] flex-col items-center justify-center gap-3 text-xs text-slate-500">
                   <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
                   <span>Memuat berkas sertifikat...</span>
                 </div>
-              ) : /\.(png|jpe?g|webp|gif)$/i.test(previewCert.fileName || '') ||
+              ) : previewMimeType.startsWith('image/') ||
+                /\.(png|jpe?g|webp|gif)$/i.test(previewCert.fileName || '') ||
                 previewCert.fileUrl.startsWith('data:image/') ? (
                 <img
                   src={previewBlobUrl || previewCert.fileUrl}
                   alt={previewCert.eventName}
                   referrerPolicy="no-referrer"
-                  className="mx-auto max-h-[60vh] rounded-xl object-contain"
+                  className="mx-auto max-h-[58dvh] sm:max-h-[62vh] w-full rounded-xl bg-slate-50 object-contain dark:bg-slate-950"
                 />
               ) : (
-                <iframe
-                  title={previewCert.eventName}
-                  src={previewBlobUrl || previewCert.fileUrl}
-                  className="h-[60vh] w-full rounded-xl border border-slate-200 dark:border-slate-800"
-                />
+                <div className="space-y-3">
+                  <iframe
+                    title={previewCert.eventName}
+                    src={previewBlobUrl || previewCert.fileUrl}
+                    className="h-[46dvh] sm:h-[58vh] w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs dark:border-slate-800 dark:bg-slate-950">
+                    <span className="text-slate-600 dark:text-slate-300">
+                      Jika PDF tidak muncul penuh di browser HP, buka atau unduh langsung:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openOrDownloadFile(
+                            previewCert.fileUrl,
+                            previewCert.fileName || `${previewCert.eventName}.pdf`,
+                            'open'
+                          )
+                        }
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                      >
+                        Buka PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openOrDownloadFile(
+                            previewCert.fileUrl,
+                            previewCert.fileName || `${previewCert.eventName}.pdf`,
+                            'download'
+                          )
+                        }
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700"
+                      >
+                        Unduh
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
               {previewCert.description && (
                 <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">

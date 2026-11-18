@@ -57,7 +57,7 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
   return (
     <div className="space-y-6">
       {/* Control Bar */}
-      <div className="no-print flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900">
+      <div className="no-print flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:p-5 dark:border-slate-800 dark:bg-slate-900">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">
             Generator CV Otomatis
@@ -69,7 +69,7 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+          <div className="inline-flex flex-wrap rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
             <button
               type="button"
               onClick={() => handleSelectTemplate('modern')}
@@ -126,30 +126,30 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
       <div className="print-area mx-auto max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm">
         {template === 'modern' ? (
           <div>
-            <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-8 py-8 text-white">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-6 text-white sm:px-8 sm:py-8">
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
                 <img
                   src={profile.photoURL || '/src/assets/images/avatar_educator_default_1794813989923.jpg'}
                   alt={profile.fullName}
                   referrerPolicy="no-referrer"
-                  className="h-24 w-24 rounded-2xl border-2 border-white/40 object-cover"
+                  className="h-24 w-24 shrink-0 rounded-2xl border-2 border-white/40 bg-white/15 object-contain p-0.5 sm:h-28 sm:w-28"
                 />
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                <div className="min-w-0">
+                  <h1 className="text-xl font-bold tracking-tight sm:text-3xl break-words">
                     {profile.fullName || 'Nama Lengkap'}
                   </h1>
-                  <p className="mt-1 text-sm font-medium text-blue-100">
+                  <p className="mt-1 text-sm font-medium text-blue-100 break-words">
                     {profile.jabatanKelas || 'Pendidik / Profesional'}
                     {profile.nipNisn ? ` · ID ${profile.nipNisn}` : ''}
                   </p>
-                  <p className="mt-2 text-xs text-blue-50">
+                  <p className="mt-2 text-xs text-blue-50 break-words">
                     {[profile.email, profile.phone, profile.address].filter(Boolean).join('  •  ')}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-8 p-8 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 p-4 sm:gap-8 sm:p-8 md:grid-cols-3">
               {/* Left sidebar info */}
               <div className="space-y-6 md:col-span-1">
                 <div>
@@ -210,9 +210,9 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
                     <div className="mt-3 space-y-3">
                       {achievements.map((a) => (
                         <div key={a.id}>
-                          <div className="flex justify-between gap-2 text-sm font-semibold text-slate-900">
+                          <div className="flex items-start justify-between gap-2 text-sm font-semibold text-slate-900">
                             <span>{a.title}</span>
-                            <span className="font-mono-tabular text-xs text-slate-500">{a.year}</span>
+                            <span className="font-mono-tabular text-xs text-slate-500 shrink-0">{a.year}</span>
                           </div>
                           <p className="text-xs text-blue-600">Tingkat {a.level}</p>
                           {a.description && (
@@ -233,12 +233,12 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
                   ) : (
                     <div className="mt-3 space-y-2.5">
                       {certificates.map((c) => (
-                        <div key={c.id} className="flex justify-between gap-4 text-xs">
-                          <div>
+                        <div key={c.id} className="flex items-start justify-between gap-4 text-xs">
+                          <div className="min-w-0">
                             <p className="font-semibold text-slate-900">{c.eventName}</p>
                             <p className="text-slate-600">{c.organizer}</p>
                           </div>
-                          <span className="font-mono-tabular text-slate-500">{c.year}</span>
+                          <span className="font-mono-tabular text-slate-500 shrink-0">{c.year}</span>
                         </div>
                       ))}
                     </div>
@@ -253,9 +253,9 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
                     <div className="mt-3 space-y-2.5">
                       {activities.map((act) => (
                         <div key={act.id} className="text-xs">
-                          <div className="flex justify-between gap-2 font-semibold text-slate-900">
+                          <div className="flex items-start justify-between gap-2 font-semibold text-slate-900">
                             <span>{act.title}</span>
-                            <span className="font-mono-tabular text-slate-500">{act.date}</span>
+                            <span className="font-mono-tabular text-slate-500 shrink-0">{act.date}</span>
                           </div>
                           {act.description && (
                             <p className="mt-0.5 text-slate-600">{act.description}</p>
@@ -270,12 +270,12 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
           </div>
         ) : (
           /* ATS Friendly Clean Monochrome Layout */
-          <div className="space-y-6 p-10 font-sans text-slate-900">
+          <div className="space-y-5 p-5 font-sans text-slate-900 sm:space-y-6 sm:p-10">
             <header className="border-b-2 border-slate-900 pb-4">
-              <h1 className="text-2xl font-bold tracking-tight uppercase">
+              <h1 className="text-xl font-bold tracking-tight uppercase sm:text-2xl break-words">
                 {profile.fullName || 'NAMA LENGKAP'}
               </h1>
-              <p className="mt-1 text-sm font-medium text-slate-700">
+              <p className="mt-1 text-sm font-medium text-slate-700 break-words">
                 {[
                   profile.jabatanKelas,
                   profile.nipNisn ? `ID: ${profile.nipNisn}` : '',
@@ -285,7 +285,7 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
                   .filter(Boolean)
                   .join(' | ')}
               </p>
-              {profile.address && <p className="mt-0.5 text-xs text-slate-600">{profile.address}</p>}
+              {profile.address && <p className="mt-0.5 text-xs text-slate-600 break-words">{profile.address}</p>}
             </header>
 
             <section>

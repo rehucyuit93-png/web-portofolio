@@ -58,7 +58,7 @@ export const ActivityLogsSection: React.FC<{ logs: AuditLog[] }> = ({ logs }) =>
         <select
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
-          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
         >
           <option value="all">Semua Aktivitas</option>
           <option value="LOGIN">Login</option>
@@ -75,36 +75,58 @@ export const ActivityLogsSection: React.FC<{ logs: AuditLog[] }> = ({ logs }) =>
             Belum ada riwayat aktivitas yang sesuai filter.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-                <tr>
-                  <th className="px-5 py-3.5">Jenis Aksi</th>
-                  <th className="px-4 py-3.5">Modul</th>
-                  <th className="px-4 py-3.5">Keterangan</th>
-                  <th className="px-5 py-3.5 text-right">Waktu</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {filtered.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                    <td className="px-5 py-3 text-xs font-semibold text-blue-600 dark:text-blue-400">
-                      {labelAction(log.action)}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-700 dark:text-slate-300">
-                      {log.module}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-900 dark:text-slate-100">
-                      {log.detail}
-                    </td>
-                    <td className="px-5 py-3 text-right font-mono-tabular text-xs text-slate-500 dark:text-slate-400">
+          <>
+            {/* Mobile Card List */}
+            <div className="divide-y divide-slate-200 md:hidden dark:divide-slate-800">
+              {filtered.map((log) => (
+                <div key={log.id} className="space-y-1.5 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                      {labelAction(log.action)} · {log.module}
+                    </span>
+                    <span className="font-mono-tabular text-[11px] text-slate-500 dark:text-slate-400">
                       {formatTimestamp(log.createdAt)}
-                    </td>
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-800 dark:text-slate-200">
+                    {log.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                  <tr>
+                    <th className="px-5 py-3.5">Jenis Aksi</th>
+                    <th className="px-4 py-3.5">Modul</th>
+                    <th className="px-4 py-3.5">Keterangan</th>
+                    <th className="px-5 py-3.5 text-right">Waktu</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {filtered.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                      <td className="px-5 py-3 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                        {labelAction(log.action)}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-700 dark:text-slate-300">
+                        {log.module}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-900 dark:text-slate-100">
+                        {log.detail}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono-tabular text-xs text-slate-500 dark:text-slate-400">
+                        {formatTimestamp(log.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

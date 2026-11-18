@@ -199,7 +199,7 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
   return (
     <div className="space-y-6">
       {/* KPI Overview */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Jumlah Pengguna</p>
           <p className="mt-2 font-mono-tabular text-3xl font-bold text-slate-900 dark:text-white">
@@ -287,7 +287,7 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
 
       {/* User Management Table */}
       <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col justify-between gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center dark:border-slate-800">
+        <div className="flex flex-col justify-between gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:p-5 dark:border-slate-800">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
               Manajemen Seluruh Pengguna
@@ -303,12 +303,12 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari nama / email..."
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 outline-none focus:border-blue-600 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
             >
               <option value="all">Semua Role</option>
               <option value="admin">Admin</option>
@@ -318,38 +318,48 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
             <button
               type="button"
               onClick={() => setShowAddUser(true)}
-              className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              className="w-full rounded-xl bg-blue-600 px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto sm:py-2"
             >
               + Tambah Pengguna
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div>
           {loading ? (
             <div className="p-8 text-center text-xs text-slate-500">Memuat data pengguna...</div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-                <tr>
-                  <th className="px-5 py-3">Pengguna</th>
-                  <th className="px-4 py-3">NIP / NISN</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-5 py-3 text-right">Aksi Admin</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+            <>
+              {/* Mobile User Cards */}
+              <div className="divide-y divide-slate-200 md:hidden dark:divide-slate-800">
                 {filteredUsers.map((u) => (
-                  <tr key={u.uid} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                    <td className="px-5 py-3">
-                      <p className="font-semibold text-slate-900 dark:text-white">{u.displayName}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{u.email}</p>
-                    </td>
-                    <td className="px-4 py-3 font-mono-tabular text-xs text-slate-600 dark:text-slate-300">
-                      {u.nipNisn || '—'}
-                    </td>
-                    <td className="px-4 py-3">
+                  <div key={u.uid} className="space-y-2.5 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 dark:text-white break-words">
+                          {u.displayName}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 break-all">
+                          {u.email}
+                        </p>
+                        {u.nipNisn && (
+                          <p className="mt-0.5 font-mono-tabular text-[11px] text-slate-500 dark:text-slate-400">
+                            ID: {u.nipNisn}
+                          </p>
+                        )}
+                      </div>
+                      {u.isActive ? (
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+                          Aktif
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 shrink-0">
+                          Nonaktif
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                       <select
                         value={u.role}
                         onChange={async (e) => {
@@ -358,26 +368,18 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
                           onNotify('success', `Role ${u.displayName} diubah menjadi ${nextRole}.`);
                           await loadData();
                         }}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium dark:border-slate-700 dark:bg-slate-950"
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium dark:border-slate-700 dark:bg-slate-950"
                       >
                         <option value="admin">Admin</option>
                         <option value="guru">Guru</option>
                         <option value="siswa">Siswa</option>
                       </select>
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {u.isActive ? (
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">Aktif</span>
-                      ) : (
-                        <span className="font-semibold text-rose-600 dark:text-rose-400">Nonaktif</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="inline-flex items-center gap-2 text-xs">
+
+                      <div className="flex items-center gap-2 text-xs">
                         <button
                           type="button"
                           onClick={() => handleResetPassword(u.email)}
-                          className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           Reset Password
                         </button>
@@ -385,18 +387,90 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(u)}
-                            className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50"
                             title="Hapus Pengguna"
                           >
                             <i className="fa-solid fa-trash" aria-hidden="true" />
                           </button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                    <tr>
+                      <th className="px-5 py-3">Pengguna</th>
+                      <th className="px-4 py-3">NIP / NISN</th>
+                      <th className="px-4 py-3">Role</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-5 py-3 text-right">Aksi Admin</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {filteredUsers.map((u) => (
+                      <tr key={u.uid} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                        <td className="px-5 py-3">
+                          <p className="font-semibold text-slate-900 dark:text-white">{u.displayName}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{u.email}</p>
+                        </td>
+                        <td className="px-4 py-3 font-mono-tabular text-xs text-slate-600 dark:text-slate-300">
+                          {u.nipNisn || '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={u.role}
+                            onChange={async (e) => {
+                              const nextRole = e.target.value as UserRole;
+                              await adminUpdateUserRoleOrStatus(u.uid, { role: nextRole }, adminAccount.uid);
+                              onNotify('success', `Role ${u.displayName} diubah menjadi ${nextRole}.`);
+                              await loadData();
+                            }}
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium dark:border-slate-700 dark:bg-slate-950"
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="guru">Guru</option>
+                            <option value="siswa">Siswa</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {u.isActive ? (
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Aktif</span>
+                          ) : (
+                            <span className="font-semibold text-rose-600 dark:text-rose-400">Nonaktif</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <div className="inline-flex items-center gap-2 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleResetPassword(u.email)}
+                              className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                            >
+                              Reset Password
+                            </button>
+                            {u.uid !== adminAccount.uid && (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget(u)}
+                                className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50"
+                                title="Hapus Pengguna"
+                              >
+                                <i className="fa-solid fa-trash" aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -425,16 +499,20 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
 
       {/* Add User Modal */}
       {showAddUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4">
           <form
             onSubmit={handleAddUser}
-            className="w-full max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            className="max-h-[92dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:p-6 dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 Tambah Pengguna Baru
               </h3>
-              <button type="button" onClick={() => setShowAddUser(false)} className="text-slate-400">
+              <button
+                type="button"
+                onClick={() => setShowAddUser(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
@@ -462,7 +540,7 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
                 className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Role

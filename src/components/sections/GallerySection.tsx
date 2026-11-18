@@ -120,7 +120,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
       {/* Toolbar */}
       <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[180px]">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
             <i className="fa-solid fa-magnifying-glass absolute top-1/2 left-3.5 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
             <input
               type="search"
@@ -130,36 +130,38 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-3 pl-9 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
           </div>
-          <select
-            value={albumFilter}
-            onChange={(e) => setAlbumFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-          >
-            <option value="all">Semua Album</option>
-            {albums.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-          <select
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-          >
-            <option value="all">Semua Tahun</option>
-            {years.map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
-              </option>
-            ))}
-          </select>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+            <select
+              value={albumFilter}
+              onChange={(e) => setAlbumFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            >
+              <option value="all">Semua Album</option>
+              {albums.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            >
+              <option value="all">Semua Tahun</option>
+              {years.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={() => setShowUpload(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 whitespace-nowrap shrink-0"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto sm:py-2 whitespace-nowrap shrink-0"
         >
           <i className="fa-solid fa-images" aria-hidden="true" />
           <span>Unggah Foto</span>
@@ -187,13 +189,13 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
               <button
                 type="button"
                 onClick={() => setLightbox(item)}
-                className="block w-full overflow-hidden text-left"
+                className="block w-full overflow-hidden bg-slate-100 text-left dark:bg-slate-950"
               >
                 <img
                   src={item.imageUrl}
                   alt={item.title}
                   referrerPolicy="no-referrer"
-                  className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  className="max-h-80 w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
                 />
               </button>
               <div className="p-4">
@@ -243,18 +245,22 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
 
       {/* Upload Modal */}
       {showUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4">
+          <div className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:p-6 dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 Unggah Foto ke Galeri
               </h3>
-              <button type="button" onClick={() => setShowUpload(false)} className="text-slate-400">
+              <button
+                type="button"
+                onClick={() => setShowUpload(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Kategori Album
@@ -335,7 +341,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
                   className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                 />
               </div>
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex flex-col items-start gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
                 <label className="inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
                   <input
                     type="checkbox"
@@ -348,7 +354,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
                 <button
                   type="submit"
                   disabled={uploading || !manualUrl.trim()}
-                  className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-blue-600"
+                  className="w-full rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50 sm:w-auto dark:bg-blue-600"
                 >
                   Tambah URL
                 </button>
@@ -361,17 +367,17 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
       {/* Lightbox */}
       {lightbox && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-2.5 backdrop-blur-sm sm:p-4"
           onClick={() => setLightbox(null)}
         >
           <div
-            className="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900"
+            className="relative flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setLightbox(null)}
-              className="absolute top-3 right-3 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900"
+              className="absolute top-3 right-3 z-10 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900"
             >
               ✕ Tutup
             </button>
@@ -379,11 +385,11 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
               src={lightbox.imageUrl}
               alt={lightbox.title}
               referrerPolicy="no-referrer"
-              className="max-h-[75vh] w-full bg-slate-950 object-contain"
+              className="max-h-[70dvh] w-full bg-slate-950 object-contain"
             />
-            <div className="flex items-center justify-between gap-4 p-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">{lightbox.title}</h3>
+            <div className="flex flex-col justify-between gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white break-words">{lightbox.title}</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {lightbox.album} · {lightbox.year}
                   {lightbox.caption ? ` — ${lightbox.caption}` : ''}
@@ -392,7 +398,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
               <button
                 type="button"
                 onClick={() => openOrDownloadFile(lightbox.imageUrl, `${lightbox.title || 'foto'}.jpg`, 'download')}
-                className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700 shrink-0"
+                className="w-full rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shrink-0"
               >
                 Unduh
               </button>

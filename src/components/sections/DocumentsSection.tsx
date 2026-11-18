@@ -109,11 +109,13 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
   };
 
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string>('');
+  const [previewMimeType, setPreviewMimeType] = useState<string>('');
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
     if (!previewDoc) {
       setPreviewBlobUrl('');
+      setPreviewMimeType('');
       setLoadingPreview(false);
       return;
     }
@@ -121,13 +123,14 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
     let revokeUrl = '';
     setLoadingPreview(true);
     resolveStoredFileUrl(previewDoc.fileUrl)
-      .then(({ resolvedUrl, isObjectUrl }) => {
+      .then(({ resolvedUrl, isObjectUrl, mimeType }) => {
         if (!active) {
           if (isObjectUrl && resolvedUrl) URL.revokeObjectURL(resolvedUrl);
           return;
         }
         if (isObjectUrl) revokeUrl = resolvedUrl;
         setPreviewBlobUrl(resolvedUrl);
+        setPreviewMimeType(mimeType || '');
       })
       .catch((err: unknown) => {
         if (active) {
@@ -214,48 +217,50 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
   return (
     <div className="space-y-5">
       {/* Toolbar */}
-      <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:flex-row sm:items-center sm:p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[200px]">
             <i className="fa-solid fa-magnifying-glass absolute top-1/2 left-3.5 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari judul atau berkas..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-3 pl-9 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-9 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
           </div>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-          >
-            <option value="all">Semua Kategori</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <select
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-          >
-            <option value="all">Semua Tahun</option>
-            {years.map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
-              </option>
-            ))}
-          </select>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            >
+              <option value="all">Semua Kategori</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono-tabular text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            >
+              <option value="all">Semua Tahun</option>
+              {years.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700 whitespace-nowrap shrink-0"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 whitespace-nowrap sm:w-auto shrink-0"
         >
           <i className="fa-solid fa-cloud-arrow-up" aria-hidden="true" />
           <span>Unggah Dokumen</span>
@@ -282,92 +287,165 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-                <tr>
-                  <th className="px-5 py-3.5">Judul Dokumen</th>
-                  <th className="px-4 py-3.5">Kategori</th>
-                  <th className="px-4 py-3.5">Format</th>
-                  <th className="px-4 py-3.5 text-right">Tahun</th>
-                  <th className="px-4 py-3.5">Visibilitas</th>
-                  <th className="px-5 py-3.5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {filtered.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
-                  >
-                    <td className="px-5 py-3.5">
-                      <p className="font-semibold text-slate-900 dark:text-white">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                        {item.fileName}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-slate-600 dark:text-slate-300">
-                      {item.category}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono-tabular text-xs font-semibold text-blue-600 dark:text-blue-400">
-                      {item.fileType}
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-mono-tabular text-xs text-slate-700 dark:text-slate-300">
-                      {item.year}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-slate-600 dark:text-slate-300">
-                      {item.isPublic ? 'Publik' : 'Privat'}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewDoc(item)}
-                          title="Pratinjau"
-                          className="rounded-lg p-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          <i className="fa-solid fa-eye" aria-hidden="true" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openOrDownloadFile(item.fileUrl, item.fileName, 'download')}
-                          title="Unduh"
-                          className="rounded-lg p-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          <i className="fa-solid fa-download" aria-hidden="true" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEdit(item)}
-                          title="Edit"
-                          className="rounded-lg p-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          <i className="fa-solid fa-pen" aria-hidden="true" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(item)}
-                          title="Hapus"
-                          className="rounded-lg p-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          <i className="fa-solid fa-trash" aria-hidden="true" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            {/* Mobile Card List */}
+            <div className="divide-y divide-slate-200 md:hidden dark:divide-slate-800">
+              {filtered.map((item) => (
+                <div key={item.id} className="space-y-3 p-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <span>{item.category}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-mono-tabular font-semibold text-blue-600 dark:text-blue-400">
+                        {item.fileType}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-mono-tabular">{item.year}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{item.isPublic ? 'Publik' : 'Privat'}</span>
+                    </div>
+                    <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
+                      {item.title}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                      {item.fileName}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDoc(item)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+                      >
+                        <i className="fa-solid fa-eye" aria-hidden="true" />
+                        <span>Pratinjau</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openOrDownloadFile(item.fileUrl, item.fileName, 'download').catch((err: unknown) =>
+                            onNotify('error', err instanceof Error ? err.message : 'Gagal mengunduh dokumen.')
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                      >
+                        <i className="fa-solid fa-download" aria-hidden="true" />
+                        <span>Unduh</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(item)}
+                        title="Edit"
+                        className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800"
+                      >
+                        <i className="fa-solid fa-pen" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(item)}
+                        title="Hapus"
+                        className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800"
+                      >
+                        <i className="fa-solid fa-trash" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                  <tr>
+                    <th className="px-5 py-3.5">Judul Dokumen</th>
+                    <th className="px-4 py-3.5">Kategori</th>
+                    <th className="px-4 py-3.5">Format</th>
+                    <th className="px-4 py-3.5 text-right">Tahun</th>
+                    <th className="px-4 py-3.5">Visibilitas</th>
+                    <th className="px-5 py-3.5 text-right">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {filtered.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                    >
+                      <td className="px-5 py-3.5">
+                        <p className="font-semibold text-slate-900 dark:text-white">{item.title}</p>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                          {item.fileName}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-slate-600 dark:text-slate-300">
+                        {item.category}
+                      </td>
+                      <td className="px-4 py-3.5 font-mono-tabular text-xs font-semibold text-blue-600 dark:text-blue-400">
+                        {item.fileType}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono-tabular text-xs text-slate-700 dark:text-slate-300">
+                        {item.year}
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-slate-600 dark:text-slate-300">
+                        {item.isPublic ? 'Publik' : 'Privat'}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewDoc(item)}
+                            title="Pratinjau"
+                            className="rounded-lg p-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <i className="fa-solid fa-eye" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openOrDownloadFile(item.fileUrl, item.fileName, 'download')}
+                            title="Unduh"
+                            className="rounded-lg p-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <i className="fa-solid fa-download" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(item)}
+                            title="Edit"
+                            className="rounded-lg p-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <i className="fa-solid fa-pen" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(item)}
+                            title="Hapus"
+                            className="rounded-lg p-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <i className="fa-solid fa-trash" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Upload / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-4 backdrop-blur-sm">
           <form
             onSubmit={handleSave}
-            className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
@@ -376,7 +454,8 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="Tutup modal"
               >
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
@@ -445,7 +524,7 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Kategori
@@ -539,47 +618,107 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
 
       {/* Preview Modal */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">{previewDoc.title}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-2.5 sm:p-4 backdrop-blur-sm"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4 dark:border-slate-800">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                  {previewDoc.title}
+                </h3>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                   {previewDoc.category} · {previewDoc.year} · {previewDoc.fileType}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setPreviewDoc(null)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <i className="fa-solid fa-xmark" aria-hidden="true" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'open').catch((err: unknown) =>
+                      onNotify('error', err instanceof Error ? err.message : 'Gagal membuka dokumen.')
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <i className="fa-solid fa-up-right-from-square" aria-hidden="true" />
+                  <span className="hidden sm:inline">Buka Penuh</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'download').catch((err: unknown) =>
+                      onNotify('error', err instanceof Error ? err.message : 'Gagal mengunduh dokumen.')
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                >
+                  <i className="fa-solid fa-download" aria-hidden="true" />
+                  <span>Unduh</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  aria-label="Tutup pratinjau"
+                >
+                  <i className="fa-solid fa-xmark" aria-hidden="true" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-5">
+            <div className="flex-1 overflow-auto p-3.5 sm:p-5">
               {loadingPreview ? (
-                <div className="flex h-[55vh] flex-col items-center justify-center gap-3 text-xs text-slate-500">
+                <div className="flex h-[45dvh] sm:h-[55vh] flex-col items-center justify-center gap-3 text-xs text-slate-500">
                   <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
                   <span>Memuat berkas dokumen...</span>
                 </div>
-              ) : previewDoc.fileType === 'JPG' || previewDoc.fileType === 'PNG' ? (
+              ) : previewMimeType.startsWith('image/') ||
+                previewDoc.fileType === 'JPG' ||
+                previewDoc.fileType === 'PNG' ? (
                 <img
                   src={previewBlobUrl || previewDoc.fileUrl}
                   alt={previewDoc.title}
                   referrerPolicy="no-referrer"
-                  className="mx-auto max-h-[60vh] rounded-xl object-contain"
+                  className="mx-auto max-h-[58dvh] sm:max-h-[62vh] w-full rounded-xl bg-slate-50 object-contain dark:bg-slate-950"
                 />
               ) : previewDoc.fileType === 'PDF' ? (
-                <iframe
-                  title={previewDoc.title}
-                  src={previewBlobUrl || previewDoc.fileUrl}
-                  className="h-[60vh] w-full rounded-xl border border-slate-200 dark:border-slate-800"
-                />
+                <div className="space-y-3">
+                  <iframe
+                    title={previewDoc.title}
+                    src={previewBlobUrl || previewDoc.fileUrl}
+                    className="h-[46dvh] sm:h-[58vh] w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs dark:border-slate-800 dark:bg-slate-950">
+                    <span className="text-slate-600 dark:text-slate-300">
+                      Jika PDF tidak tampil penuh di browser HP, buka atau unduh langsung:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'open')}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                      >
+                        Buka PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'download')}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700"
+                      >
+                        Unduh
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-800 dark:bg-slate-950">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 sm:p-8 text-center dark:border-slate-800 dark:bg-slate-950">
                   <i className="fa-solid fa-file-lines text-4xl text-blue-600" aria-hidden="true" />
-                  <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">
+                  <p className="mt-3 break-words text-sm font-semibold text-slate-900 dark:text-white">
                     {previewDoc.fileName}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">

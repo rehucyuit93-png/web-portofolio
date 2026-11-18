@@ -123,7 +123,7 @@ export const AchievementsSection: React.FC<{
     <div className="space-y-5">
       <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[200px]">
             <i className="fa-solid fa-magnifying-glass absolute top-1/2 left-3.5 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
             <input
               type="search"
@@ -136,7 +136,7 @@ export const AchievementsSection: React.FC<{
           <select
             value={yearFilter}
             onChange={(e) => setYearFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
           >
             <option value="all">Semua Tahun</option>
             {years.map((y) => (
@@ -150,7 +150,7 @@ export const AchievementsSection: React.FC<{
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 whitespace-nowrap shrink-0"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto sm:py-2 whitespace-nowrap shrink-0"
         >
           <i className="fa-solid fa-plus" aria-hidden="true" />
           <span>Tambah Prestasi</span>
@@ -169,27 +169,27 @@ export const AchievementsSection: React.FC<{
           </p>
         </div>
       ) : (
-        <div className="relative space-y-4 pl-6 before:absolute before:top-2 before:bottom-2 before:left-2 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
+        <div className="relative space-y-4 pl-5 before:absolute before:top-2 before:bottom-2 before:left-1.5 before:w-px before:bg-slate-200 sm:pl-6 sm:before:left-2 dark:before:bg-slate-800">
           {filtered.map((item) => (
             <div
               key={item.id}
-              className="relative rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
+              className="relative rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900"
             >
               <span
                 aria-hidden="true"
-                className="absolute top-6 -left-[21px] h-3 w-3 rounded-full border-2 border-white bg-blue-600 dark:border-slate-950"
+                className="absolute top-6 -left-[19px] h-3 w-3 rounded-full border-2 border-white bg-blue-600 sm:-left-[21px] dark:border-slate-950"
               />
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                <div className="flex flex-1 gap-4">
+                <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:gap-4">
                   {item.photoUrl && (
                     <img
                       src={item.photoUrl}
                       alt={item.title}
                       referrerPolicy="no-referrer"
-                      className="h-20 w-28 rounded-xl object-cover shrink-0"
+                      className="h-40 w-full rounded-xl bg-slate-100 object-contain p-1 shrink-0 sm:h-20 sm:w-28 dark:bg-slate-800"
                     />
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span className="font-semibold text-violet-600 dark:text-violet-400">
                         Tingkat {item.level}
@@ -208,11 +208,11 @@ export const AchievementsSection: React.FC<{
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center justify-end gap-1 shrink-0">
                   <button
                     type="button"
                     onClick={() => openEdit(item)}
-                    className="rounded-lg p-2 text-xs text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800"
                     title="Edit"
                   >
                     <i className="fa-solid fa-pen" aria-hidden="true" />
@@ -223,7 +223,7 @@ export const AchievementsSection: React.FC<{
                       await onDelete(item);
                       if (item.storagePath) await deleteStorageFile(item.storagePath);
                     }}
-                    className="rounded-lg p-2 text-xs text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800"
                     title="Hapus"
                   >
                     <i className="fa-solid fa-trash" aria-hidden="true" />
@@ -236,16 +236,20 @@ export const AchievementsSection: React.FC<{
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4">
           <form
             onSubmit={handleSubmit}
-            className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:p-6 dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {editing ? 'Edit Prestasi' : 'Tambah Prestasi'}
               </h3>
-              <button type="button" onClick={() => setShowModal(false)} className="text-slate-400">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
@@ -264,7 +268,7 @@ export const AchievementsSection: React.FC<{
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Tingkat
@@ -490,7 +494,7 @@ export const ActivitiesSection: React.FC<{
     <div className="space-y-5">
       <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[200px]">
             <i className="fa-solid fa-magnifying-glass absolute top-1/2 left-3.5 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
             <input
               type="search"
@@ -503,7 +507,7 @@ export const ActivitiesSection: React.FC<{
           <select
             value={yearFilter}
             onChange={(e) => setYearFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
           >
             <option value="all">Semua Tahun</option>
             {years.map((y) => (
@@ -517,7 +521,7 @@ export const ActivitiesSection: React.FC<{
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 whitespace-nowrap shrink-0"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto sm:py-2 whitespace-nowrap shrink-0"
         >
           <i className="fa-solid fa-plus" aria-hidden="true" />
           <span>Tambah Kegiatan</span>
@@ -545,9 +549,9 @@ export const ActivitiesSection: React.FC<{
                 src={item.photoUrl || '/src/assets/images/gallery_seminar_event_1794813993737.jpg'}
                 alt={item.title}
                 referrerPolicy="no-referrer"
-                className="aspect-video w-full object-cover"
+                className="aspect-video w-full bg-slate-100 object-contain dark:bg-slate-800"
               />
-              <div className="p-5">
+              <div className="p-4 sm:p-5">
                 <p className="font-mono-tabular text-xs text-slate-500 dark:text-slate-400">
                   {item.date}
                 </p>
@@ -563,7 +567,7 @@ export const ActivitiesSection: React.FC<{
                   <button
                     type="button"
                     onClick={() => openEdit(item)}
-                    className="rounded-lg p-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800"
                   >
                     <i className="fa-solid fa-pen" aria-hidden="true" />
                   </button>
@@ -573,7 +577,7 @@ export const ActivitiesSection: React.FC<{
                       await onDelete(item);
                       if (item.storagePath) await deleteStorageFile(item.storagePath);
                     }}
-                    className="rounded-lg p-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800"
                   >
                     <i className="fa-solid fa-trash" aria-hidden="true" />
                   </button>
@@ -585,16 +589,20 @@ export const ActivitiesSection: React.FC<{
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4">
           <form
             onSubmit={handleSubmit}
-            className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:p-6 dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {editing ? 'Edit Kegiatan' : 'Tambah Kegiatan'}
               </h3>
-              <button type="button" onClick={() => setShowModal(false)} className="text-slate-400">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>

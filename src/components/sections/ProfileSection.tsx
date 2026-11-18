@@ -35,6 +35,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
+  const [zoomPhoto, setZoomPhoto] = useState(false);
 
   useEffect(() => {
     setForm({
@@ -104,24 +105,34 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
       {/* Form Column */}
       <form
         onSubmit={handleSubmit}
-        className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 xl:col-span-7 dark:border-slate-800 dark:bg-slate-900"
+        className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 xl:col-span-7 dark:border-slate-800 dark:bg-slate-900"
       >
         <div className="border-b border-slate-200 pb-4 dark:border-slate-800">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Profil Saya</h2>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Perubahan di sebelah kiri langsung ditampilkan pada pratinjau portofolio secara realtime.
+            Perubahan langsung ditampilkan pada pratinjau portofolio secara realtime.
           </p>
         </div>
 
         {/* Photo upload */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <img
-            src={form.photoURL || '/src/assets/images/avatar_educator_default_1794813989923.jpg'}
-            alt="Foto Profil"
-            referrerPolicy="no-referrer"
-            className="h-20 w-20 rounded-2xl border border-slate-200 object-cover dark:border-slate-700"
-          />
-          <div className="flex-1 space-y-2">
+          <button
+            type="button"
+            onClick={() => setZoomPhoto(true)}
+            title="Klik untuk melihat foto profil ukuran penuh"
+            className="group relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 p-1 sm:h-32 sm:w-32 dark:border-slate-700 dark:bg-slate-800"
+          >
+            <img
+              src={form.photoURL || '/src/assets/images/avatar_educator_default_1794813989923.jpg'}
+              alt="Foto Profil"
+              referrerPolicy="no-referrer"
+              className="h-full w-full rounded-xl object-contain"
+            />
+            <span className="absolute right-1.5 bottom-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/70 text-[10px] text-white opacity-90 transition-opacity group-hover:opacity-100">
+              <i className="fa-solid fa-expand" aria-hidden="true" />
+            </span>
+          </button>
+          <div className="min-w-0 flex-1 space-y-2">
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
               <i className="fa-solid fa-camera" aria-hidden="true" />
               <span>{uploadingPhoto ? `Mengunggah ${uploadPct}%...` : 'Unggah Foto Profil'}</span>
@@ -352,23 +363,30 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
 
       {/* Realtime Preview Column */}
       <aside className="xl:col-span-5">
-        <div className="glass-panel sticky top-24 rounded-2xl border border-slate-200 p-6 dark:border-slate-800">
+        <div className="glass-panel rounded-2xl border border-slate-200 p-4 sm:p-6 xl:sticky xl:top-24 dark:border-slate-800">
           <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
             Pratinjau Realtime Portofolio
           </p>
 
-          <div className="mt-5 flex items-center gap-4">
-            <img
-              src={form.photoURL || '/src/assets/images/avatar_educator_default_1794813989923.jpg'}
-              alt={form.fullName || 'Preview'}
-              referrerPolicy="no-referrer"
-              className="h-20 w-20 rounded-2xl border border-slate-200 object-cover dark:border-slate-700"
-            />
+          <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={() => setZoomPhoto(true)}
+              title="Lihat foto penuh"
+              className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 p-1 sm:h-28 sm:w-28 dark:border-slate-700 dark:bg-slate-800"
+            >
+              <img
+                src={form.photoURL || '/src/assets/images/avatar_educator_default_1794813989923.jpg'}
+                alt={form.fullName || 'Preview'}
+                referrerPolicy="no-referrer"
+                className="h-full w-full rounded-xl object-contain"
+              />
+            </button>
             <div className="min-w-0">
-              <h3 className="truncate text-lg font-bold text-slate-900 dark:text-white">
+              <h3 className="break-words text-lg font-bold text-slate-900 dark:text-white">
                 {form.fullName || 'Nama Lengkap Anda'}
               </h3>
-              <p className="truncate text-sm font-medium text-blue-600 dark:text-blue-400">
+              <p className="break-words text-sm font-medium text-blue-600 dark:text-blue-400">
                 {form.jabatanKelas || 'Jabatan / Kelas'}
               </p>
               <p className="mt-0.5 font-mono-tabular text-xs text-slate-500 dark:text-slate-400">
@@ -377,46 +395,78 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
             </div>
           </div>
 
-          <p className="mt-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          <p className="mt-5 break-words text-sm leading-relaxed text-slate-700 dark:text-slate-300">
             {form.bio || 'Bio singkat Anda akan muncul di sini saat Anda mengetik.'}
           </p>
 
           <div className="mt-6 space-y-3 border-t border-slate-200 pt-5 text-xs dark:border-slate-800">
             <div className="flex justify-between gap-4">
-              <span className="text-slate-500 dark:text-slate-400">URL Publik</span>
-              <span className="font-mono-tabular font-semibold text-slate-900 dark:text-white">
+              <span className="shrink-0 text-slate-500 dark:text-slate-400">URL Publik</span>
+              <span className="min-w-0 break-all text-right font-mono-tabular font-semibold text-slate-900 dark:text-white">
                 /portfolio/{form.username || 'username'}
               </span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-slate-500 dark:text-slate-400">Pendidikan</span>
-              <span className="text-right font-medium text-slate-900 dark:text-white">
+              <span className="shrink-0 text-slate-500 dark:text-slate-400">Pendidikan</span>
+              <span className="min-w-0 break-words text-right font-medium text-slate-900 dark:text-white">
                 {form.education || '—'}
               </span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-slate-500 dark:text-slate-400">Keahlian</span>
-              <span className="text-right font-medium text-slate-900 dark:text-white">
+              <span className="shrink-0 text-slate-500 dark:text-slate-400">Keahlian</span>
+              <span className="min-w-0 break-words text-right font-medium text-slate-900 dark:text-white">
                 {form.expertise || '—'}
               </span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-slate-500 dark:text-slate-400">TTL</span>
-              <span className="text-right font-medium text-slate-900 dark:text-white">
+              <span className="shrink-0 text-slate-500 dark:text-slate-400">TTL</span>
+              <span className="min-w-0 break-words text-right font-medium text-slate-900 dark:text-white">
                 {form.birthPlace || form.birthDate
                   ? `${form.birthPlace || ''}${form.birthPlace && form.birthDate ? ', ' : ''}${form.birthDate || ''}`
                   : '—'}
               </span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-slate-500 dark:text-slate-400">Kontak</span>
-              <span className="text-right font-medium text-slate-900 dark:text-white">
+              <span className="shrink-0 text-slate-500 dark:text-slate-400">Kontak</span>
+              <span className="min-w-0 break-all text-right font-medium text-slate-900 dark:text-white">
                 {form.phone || form.email || '—'}
               </span>
             </div>
           </div>
         </div>
       </aside>
+
+      {/* Full-size Photo Lightbox */}
+      {zoomPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm"
+          onClick={() => setZoomPhoto(false)}
+        >
+          <div
+            className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setZoomPhoto(false)}
+              className="absolute top-3 right-3 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900"
+            >
+              ✕ Tutup
+            </button>
+            <img
+              src={form.photoURL || '/src/assets/images/avatar_educator_default_1794813989923.jpg'}
+              alt={form.fullName || 'Foto Profil'}
+              referrerPolicy="no-referrer"
+              className="max-h-[75dvh] w-full bg-slate-950 object-contain"
+            />
+            <div className="p-4 text-center">
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                {form.fullName || 'Foto Profil'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -187,6 +187,7 @@ export interface PublicPortfolioDoc {
     eventName: string;
     organizer: string;
     year: number;
+    fileName?: string;
     fileUrl: string;
     description?: string;
   }>;

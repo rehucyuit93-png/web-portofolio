@@ -101,7 +101,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Left column: Appearance Preferences + Account Email Verification */}
       <div className="space-y-6">
-        <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 dark:border-slate-800 dark:bg-slate-900">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               Tampilan & Notifikasi
@@ -112,8 +112,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-              <div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   Tema Aplikasi
                 </p>
@@ -121,7 +121,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   Pilih Mode Terang atau Mode Gelap yang nyaman di mata
                 </p>
               </div>
-              <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+              <div className="inline-flex rounded-xl bg-slate-100 p-1 shrink-0 dark:bg-slate-800">
                 <button
                   type="button"
                   onClick={() => onUpdateSettings({ theme: 'light' })}
@@ -185,13 +185,13 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
         {/* Account Status & Optional Email Verification */}
         {accountEmail && (
-          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 dark:border-slate-800 dark:bg-slate-900">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">
                   Status Akun & Verifikasi Email
                 </h2>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 break-all">
                   Alamat email terdaftar: <strong className="text-slate-700 dark:text-slate-200">{accountEmail}</strong>
                 </p>
               </div>
@@ -309,7 +309,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
       <div className="space-y-6">
         <form
           onSubmit={handlePasswordChange}
-          className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+          className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 dark:border-slate-800 dark:bg-slate-900"
         >
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Ubah Kata Sandi</h2>
@@ -352,7 +352,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           </button>
         </form>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Backup Data Portofolio</h2>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Unduh salinan lengkap seluruh profil, dokumen, sertifikat, prestasi, kegiatan, dan galeri Anda.
