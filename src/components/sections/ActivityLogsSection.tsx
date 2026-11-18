@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { formatDateTimeIndo } from '../../lib/dateFormat';
 import type { AuditLog, LogAction } from '../../types/portfolio';
 
 export const ActivityLogsSection: React.FC<{ logs: AuditLog[] }> = ({ logs }) => {
@@ -16,7 +15,13 @@ export const ActivityLogsSection: React.FC<{ logs: AuditLog[] }> = ({ logs }) =>
     });
   }, [logs, search, actionFilter]);
 
-  const formatTimestamp = (ts: unknown) => formatDateTimeIndo(ts);
+  const formatTimestamp = (ts: unknown) => {
+    if (!ts) return 'Baru saja';
+    if (typeof (ts as { toDate?: () => Date }).toDate === 'function') {
+      return (ts as { toDate: () => Date }).toDate().toLocaleString('id-ID');
+    }
+    return String(ts);
+  };
 
   const labelAction = (action: LogAction) => {
     switch (action) {

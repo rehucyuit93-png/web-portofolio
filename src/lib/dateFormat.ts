@@ -1,33 +1,3 @@
-export const MONTHS_ID = [
-  'Januari',
-  'Februari',
-  'Maret',
-  'April',
-  'Mei',
-  'Juni',
-  'Juli',
-  'Agustus',
-  'September',
-  'Oktober',
-  'November',
-  'Desember',
-] as const;
-
-export const MONTHS_SHORT_ID = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'Mei',
-  'Jun',
-  'Jul',
-  'Agu',
-  'Sep',
-  'Okt',
-  'Nov',
-  'Des',
-] as const;
-
 export interface DateParts {
   year: number;
   month: number; // 1..12
@@ -95,7 +65,6 @@ export function parseDateParts(value: unknown): DateParts | null {
       }
     }
 
-    // Full ISO timestamp
     const parsed = new Date(trimmed);
     if (!Number.isNaN(parsed.getTime())) {
       return {
@@ -109,45 +78,16 @@ export function parseDateParts(value: unknown): DateParts | null {
   return null;
 }
 
-export function formatDateIndo(
-  value: unknown,
-  style: 'long' | 'short' | 'numeric' = 'long'
-): string {
+/**
+ * Formats date in numeric DD-MM-YYYY order (tgl-bulan-tahun), e.g. "17-11-2026".
+ */
+export function formatDateDMY(value: unknown, separator: '-' | '/' = '-'): string {
   if (!value) return '';
   const parts = parseDateParts(value);
   if (!parts) return typeof value === 'string' ? value : '';
 
-  const { day, month, year } = parts;
-  if (style === 'numeric') {
-    return `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
-  }
-  if (style === 'short') {
-    return `${day} ${MONTHS_SHORT_ID[month - 1]} ${year}`;
-  }
-  return `${day} ${MONTHS_ID[month - 1]} ${year}`;
-}
-
-export function formatDateTimeIndo(ts: unknown): string {
-  if (!ts) return 'Baru saja';
-
-  let dateObj: Date | null = null;
-  if (typeof (ts as { toDate?: () => Date }).toDate === 'function') {
-    dateObj = (ts as { toDate: () => Date }).toDate();
-  } else if (ts instanceof Date) {
-    dateObj = ts;
-  } else if (typeof ts === 'string') {
-    const parsed = new Date(ts);
-    if (!Number.isNaN(parsed.getTime())) dateObj = parsed;
-  }
-
-  if (!dateObj || Number.isNaN(dateObj.getTime())) {
-    return typeof ts === 'string' ? formatDateIndo(ts) || ts : 'Baru saja';
-  }
-
-  const day = dateObj.getDate();
-  const monthName = MONTHS_SHORT_ID[dateObj.getMonth()];
-  const year = dateObj.getFullYear();
-  const hh = String(dateObj.getHours()).padStart(2, '0');
-  const mm = String(dateObj.getMinutes()).padStart(2, '0');
-  return `${day} ${monthName} ${year}, ${hh}.${mm}`;
+  const dd = String(parts.day).padStart(2, '0');
+  const mm = String(parts.month).padStart(2, '0');
+  const yyyy = String(parts.year).padStart(4, '0');
+  return `${dd}${separator}${mm}${separator}${yyyy}`;
 }

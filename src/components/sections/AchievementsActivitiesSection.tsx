@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { formatDateIndo, getTodayISO } from '../../lib/dateFormat';
+import { formatDateDMY, getTodayISO } from '../../lib/dateFormat';
 import { deleteStorageFile, uploadFileToStorage } from '../../lib/storageUpload';
 import type { Achievement, AchievementLevel, Activity } from '../../types/portfolio';
-import { DateSelector } from '../DateSelector';
+import { DateInput } from '../DateInput';
 
 const LEVELS: AchievementLevel[] = [
   'Sekolah',
@@ -555,7 +555,7 @@ export const ActivitiesSection: React.FC<{
               />
               <div className="p-4 sm:p-5">
                 <p className="font-mono-tabular text-xs text-slate-500 dark:text-slate-400">
-                  {formatDateIndo(item.date)}
+                  {formatDateDMY(item.date)}
                 </p>
                 <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
                   {item.title}
@@ -627,12 +627,10 @@ export const ActivitiesSection: React.FC<{
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Tanggal Kegiatan
               </label>
-              <DateSelector
+              <DateInput
                 required
                 value={date}
                 onChange={setDate}
-                minYear={1980}
-                maxYear={new Date().getFullYear() + 2}
                 className="mt-1.5"
               />
             </div>

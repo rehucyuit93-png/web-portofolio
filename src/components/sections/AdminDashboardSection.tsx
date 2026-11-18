@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatDateIndo } from '../../lib/dateFormat';
+import { formatDateDMY } from '../../lib/dateFormat';
 import { formatAuthErrorMessage, sendPasswordResetSafe } from '../../lib/firebase';
 import { formatFirestoreErrorForUser } from '../../lib/firestoreError';
 import {
@@ -125,7 +125,7 @@ export const AdminDashboardSection: React.FC<AdminDashboardSectionProps> = ({
     const map = new Map<string, number>();
     logs.forEach((l) => {
       const ts = l.createdAt as { toDate?: () => Date } | undefined;
-      const dateStr = ts?.toDate ? formatDateIndo(ts.toDate(), 'short') : 'Hari Ini';
+      const dateStr = ts?.toDate ? formatDateDMY(ts.toDate()) : 'Hari Ini';
       map.set(dateStr, (map.get(dateStr) || 0) + 1);
     });
     return Array.from(map.entries())
