@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDateIndo } from '../../lib/dateFormat';
 import { exportCVToPDF } from '../../lib/exportUtils';
 import type {
   Achievement,
@@ -170,7 +171,7 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
                   </h2>
                   <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
                     {profile.birthPlace || '—'}
-                    {profile.birthDate ? `, ${profile.birthDate}` : ''}
+                    {profile.birthDate ? `, ${formatDateIndo(profile.birthDate)}` : ''}
                   </p>
                 </div>
                 {documents.length > 0 && (
@@ -253,9 +254,11 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
                     <div className="mt-3 space-y-2.5">
                       {activities.map((act) => (
                         <div key={act.id} className="text-xs">
-                          <div className="flex items-start justify-between gap-2 font-semibold text-slate-900">
+                          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5 font-semibold text-slate-900">
                             <span>{act.title}</span>
-                            <span className="font-mono-tabular text-slate-500 shrink-0">{act.date}</span>
+                            <span className="font-mono-tabular text-slate-500 shrink-0">
+                              {formatDateIndo(act.date)}
+                            </span>
                           </div>
                           {act.description && (
                             <p className="mt-0.5 text-slate-600">{act.description}</p>
@@ -348,7 +351,7 @@ export const CVGeneratorSection: React.FC<CVGeneratorSectionProps> = ({
                 <ul className="mt-2 space-y-1.5 text-sm">
                   {activities.map((act) => (
                     <li key={act.id}>
-                      <strong>{act.title}</strong> ({act.date})
+                      <strong>{act.title}</strong> ({formatDateIndo(act.date)})
                       {act.description ? ` — ${act.description}` : ''}
                     </li>
                   ))}

@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
+import { formatDateIndo, getTodayISO } from '../../lib/dateFormat';
 import { deleteStorageFile, uploadFileToStorage } from '../../lib/storageUpload';
 import type { Achievement, AchievementLevel, Activity } from '../../types/portfolio';
+import { DateSelector } from '../DateSelector';
 
 const LEVELS: AchievementLevel[] = [
   'Sekolah',
@@ -397,7 +399,7 @@ export const ActivitiesSection: React.FC<{
   const [editing, setEditing] = useState<Activity | null>(null);
 
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(getTodayISO());
   const [description, setDescription] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [storagePath, setStoragePath] = useState('');
@@ -425,7 +427,7 @@ export const ActivitiesSection: React.FC<{
   const openCreate = () => {
     setEditing(null);
     setTitle('');
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(getTodayISO());
     setDescription('');
     setPhotoUrl('');
     setStoragePath('');
@@ -553,7 +555,7 @@ export const ActivitiesSection: React.FC<{
               />
               <div className="p-4 sm:p-5">
                 <p className="font-mono-tabular text-xs text-slate-500 dark:text-slate-400">
-                  {item.date}
+                  {formatDateIndo(item.date)}
                 </p>
                 <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
                   {item.title}
@@ -625,12 +627,13 @@ export const ActivitiesSection: React.FC<{
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Tanggal Kegiatan
               </label>
-              <input
-                type="date"
+              <DateSelector
                 required
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-mono-tabular text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                onChange={setDate}
+                minYear={1980}
+                maxYear={new Date().getFullYear() + 2}
+                className="mt-1.5"
               />
             </div>
 

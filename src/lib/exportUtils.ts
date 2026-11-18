@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
+import { formatDateIndo } from './dateFormat';
 import type {
   Achievement,
   Activity,
@@ -188,7 +189,7 @@ export function exportCVToPDF(params: {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9.5);
       doc.setTextColor(71, 85, 105);
-      doc.text(act.date, pageWidth - margin, y, { align: 'right' });
+      doc.text(formatDateIndo(act.date), pageWidth - margin, y, { align: 'right' });
       y += 14;
       if (act.description) {
         const desc = doc.splitTextToSize(act.description, contentWidth);
@@ -233,7 +234,7 @@ export function exportPortfolioToExcel(params: {
           NIP_NISN: params.profile.nipNisn,
           Jabatan_Kelas: params.profile.jabatanKelas,
           Tempat_Lahir: params.profile.birthPlace,
-          Tanggal_Lahir: params.profile.birthDate,
+          Tanggal_Lahir: params.profile.birthDate ? formatDateIndo(params.profile.birthDate) : '',
           Pendidikan: params.profile.education,
           Bidang_Keahlian: params.profile.expertise,
           Email: params.profile.email,
@@ -291,7 +292,7 @@ export function exportPortfolioToExcel(params: {
     XLSX.utils.json_to_sheet(
       params.activities.map((a) => ({
         Kegiatan: a.title,
-        Tanggal: a.date,
+        Tanggal: formatDateIndo(a.date),
         Tahun: a.year,
         Publik: a.isPublic ? 'Ya' : 'Tidak',
         Deskripsi: a.description,
@@ -332,7 +333,7 @@ export function exportBackupJSON(payload: Record<string, unknown>, username: str
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `backup_portofolio_${username}_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `backup_portofolio_${username}_${formatDateIndo(new Date(), 'numeric')}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
