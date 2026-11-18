@@ -618,6 +618,20 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
           </div>
         </div>
       )}
+
+      <footer className="no-print border-t border-slate-200/80 bg-white/60 dark:border-slate-800/80 dark:bg-slate-900/50">
+        <div className="mx-auto max-w-6xl px-4 py-5 text-center text-[11px] leading-relaxed text-slate-500 sm:px-6 dark:text-slate-400">
+          <p>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Creator &amp; Lead Developer:</span>{' '}
+            Ahmad Heru Wahyu Wibowo ·{' '}
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Platform Support:</span>{' '}
+            Google AI Studio
+          </p>
+          <p className="mt-0.5">
+            Role: Concept Designer, UI/UX Designer, Prompt Engineer, and Application Developer
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

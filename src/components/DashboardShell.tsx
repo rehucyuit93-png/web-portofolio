@@ -615,6 +615,18 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
               />
             )}
           </motion.div>
+
+          <footer className="no-print mt-10 border-t border-slate-200/80 pt-4 text-center text-[11px] leading-relaxed text-slate-500 dark:border-slate-800/80 dark:text-slate-400">
+            <p>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Creator &amp; Lead Developer:</span>{' '}
+              Ahmad Heru Wahyu Wibowo ·{' '}
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Platform Support:</span>{' '}
+              Google AI Studio
+            </p>
+            <p className="mt-0.5">
+              Role: Concept Designer, UI/UX Designer, Prompt Engineer, and Application Developer
+            </p>
+          </footer>
         </main>
 
         {/* Mobile Bottom Thumb Navigation Bar */}

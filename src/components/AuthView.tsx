@@ -552,6 +552,30 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-slate-200/80 bg-white/70 dark:border-slate-800/80 dark:bg-slate-900/60">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 dark:text-slate-400">
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-900 dark:text-white">
+              KaryaLoka — Portofolio Digital Modern
+            </p>
+            <p>
+              <span className="font-medium text-slate-700 dark:text-slate-300">Creator &amp; Lead Developer:</span>{' '}
+              Ahmad Heru Wahyu Wibowo
+            </p>
+            <p>
+              <span className="font-medium text-slate-700 dark:text-slate-300">Role:</span>{' '}
+              Concept Designer, UI/UX Designer, Prompt Engineer, and Application Developer
+            </p>
+          </div>
+          <div className="sm:text-right">
+            <p>
+              <span className="font-medium text-slate-700 dark:text-slate-300">Platform Support:</span>{' '}
+              Google AI Studio
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

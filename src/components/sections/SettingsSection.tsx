@@ -403,6 +403,39 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Developer & Platform Credits */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2 dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          Tentang Pengembang &amp; Dukungan Platform
+        </h2>
+        <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Creator &amp; Lead Developer
+            </p>
+            <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+              Ahmad Heru Wahyu Wibowo
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Platform Support
+            </p>
+            <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+              Google AI Studio
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Role
+            </p>
+            <p className="mt-1 font-semibold leading-relaxed text-slate-900 dark:text-white">
+              Concept Designer, UI/UX Designer, Prompt Engineer, and Application Developer
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
