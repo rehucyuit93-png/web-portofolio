@@ -1,10 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { fetchPublicPortfolio } from '../lib/portfolioService';
-import { openOrDownloadFile, resolveStoredFileUrl } from '../lib/storageUpload';
+import { openOrDownloadFile } from '../lib/storageUpload';
 import type { PublicPortfolioDoc } from '../types/portfolio';
+import { FilePreviewModal } from './FilePreviewModal';
 
-type PublicCertificateItem = NonNullable<PublicPortfolioDoc['featuredCertificates']>[number];
+interface PublicPreviewItem {
+  title: string;
+  subtitle: string;
+  description?: string;
+  fileUrl: string;
+  fileName?: string;
+  fileType?: string;
+}
 
 interface PublicPortfolioViewProps {
   username: string;
@@ -23,10 +31,7 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string; caption?: string } | null>(
     null
   );
-  const [previewCert, setPreviewCert] = useState<PublicCertificateItem | null>(null);
-  const [previewCertUrl, setPreviewCertUrl] = useState('');
-  const [previewCertMime, setPreviewCertMime] = useState('');
-  const [loadingCertPreview, setLoadingCertPreview] = useState(false);
+  const [previewItem, setPreviewItem] = useState<PublicPreviewItem | null>(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const qrWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -57,41 +62,6 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
       active = false;
     };
   }, [username]);
-
-  useEffect(() => {
-    if (!previewCert?.fileUrl) {
-      setPreviewCertUrl('');
-      setPreviewCertMime('');
-      setLoadingCertPreview(false);
-      return;
-    }
-    let active = true;
-    let revokeUrl = '';
-    setLoadingCertPreview(true);
-    resolveStoredFileUrl(previewCert.fileUrl)
-      .then(({ resolvedUrl, isObjectUrl, mimeType }) => {
-        if (!active) {
-          if (isObjectUrl && resolvedUrl) URL.revokeObjectURL(resolvedUrl);
-          return;
-        }
-        if (isObjectUrl) revokeUrl = resolvedUrl;
-        setPreviewCertUrl(resolvedUrl);
-        setPreviewCertMime(mimeType || '');
-      })
-      .catch((err: unknown) => {
-        if (active) {
-          onNotify('error', err instanceof Error ? err.message : 'Gagal memuat pratinjau sertifikat.');
-        }
-      })
-      .finally(() => {
-        if (active) setLoadingCertPreview(false);
-      });
-
-    return () => {
-      active = false;
-      if (revokeUrl) URL.revokeObjectURL(revokeUrl);
-    };
-  }, [previewCert, onNotify]);
 
   const handleCopyLink = async () => {
     try {
@@ -339,14 +309,22 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
                         </p>
                       )}
                       {cert.fileUrl && (
-                        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                           <button
                             type="button"
-                            onClick={() => setPreviewCert(cert)}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                            onClick={() =>
+                              setPreviewItem({
+                                title: cert.eventName,
+                                subtitle: `${cert.organizer} · ${cert.year}`,
+                                description: cert.description,
+                                fileUrl: cert.fileUrl,
+                                fileName: cert.fileName || `${cert.eventName}.pdf`,
+                              })
+                            }
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300"
                           >
                             <i className="fa-solid fa-eye" aria-hidden="true" />
-                            <span>Pratinjau Sertifikat</span>
+                            <span>Pratinjau</span>
                           </button>
                           <button
                             type="button"
@@ -359,7 +337,7 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
                                 onNotify('error', err instanceof Error ? err.message : 'Gagal mengunduh berkas.')
                               )
                             }
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300"
                           >
                             <i className="fa-solid fa-download" aria-hidden="true" />
                             <span>Unduh</span>
@@ -443,18 +421,37 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
                           </h3>
                         </div>
                         {d.fileUrl && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openOrDownloadFile(d.fileUrl, d.title, 'download').catch((err: unknown) =>
-                                onNotify('error', err instanceof Error ? err.message : 'Gagal mengunduh berkas.')
-                              )
-                            }
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 shrink-0"
-                          >
-                            <i className="fa-solid fa-download" aria-hidden="true" />
-                            <span>Unduh / Lihat</span>
-                          </button>
+                          <div className="flex flex-wrap items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewItem({
+                                  title: d.title,
+                                  subtitle: `${d.category} · ${d.year} · ${d.fileType}`,
+                                  description: d.description,
+                                  fileUrl: d.fileUrl,
+                                  fileName: `${d.title}.${d.fileType.toLowerCase()}`,
+                                  fileType: d.fileType,
+                                })
+                              }
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300"
+                            >
+                              <i className="fa-solid fa-eye" aria-hidden="true" />
+                              <span>Pratinjau</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openOrDownloadFile(d.fileUrl, d.title, 'download').catch((err: unknown) =>
+                                  onNotify('error', err instanceof Error ? err.message : 'Gagal mengunduh berkas.')
+                                )
+                              }
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                            >
+                              <i className="fa-solid fa-download" aria-hidden="true" />
+                              <span>Unduh</span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -576,135 +573,18 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
         </div>
       )}
 
-      {/* Certificate Preview Modal */}
-      {previewCert && (
-        <div
-          className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-2.5 sm:p-4 backdrop-blur-sm"
-          onClick={() => setPreviewCert(null)}
-        >
-          <div
-            className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4 dark:border-slate-800">
-              <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
-                  {previewCert.eventName}
-                </h3>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {previewCert.organizer} · {previewCert.year}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() =>
-                    openOrDownloadFile(
-                      previewCert.fileUrl,
-                      previewCert.fileName || `${previewCert.eventName}.pdf`,
-                      'open'
-                    ).catch((err: unknown) =>
-                      onNotify('error', err instanceof Error ? err.message : 'Gagal membuka sertifikat.')
-                    )
-                  }
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  <i className="fa-solid fa-up-right-from-square" aria-hidden="true" />
-                  <span className="hidden sm:inline">Buka Penuh</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    openOrDownloadFile(
-                      previewCert.fileUrl,
-                      previewCert.fileName || `${previewCert.eventName}.pdf`,
-                      'download'
-                    ).catch((err: unknown) =>
-                      onNotify('error', err instanceof Error ? err.message : 'Gagal mengunduh sertifikat.')
-                    )
-                  }
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                >
-                  <i className="fa-solid fa-download" aria-hidden="true" />
-                  <span>Unduh</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewCert(null)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  aria-label="Tutup pratinjau"
-                >
-                  <i className="fa-solid fa-xmark" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-3.5 sm:p-5">
-              {loadingCertPreview ? (
-                <div className="flex h-[45dvh] sm:h-[55vh] flex-col items-center justify-center gap-3 text-xs text-slate-500">
-                  <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
-                  <span>Memuat berkas sertifikat...</span>
-                </div>
-              ) : previewCertMime.startsWith('image/') ||
-                /\.(png|jpe?g|webp|gif)$/i.test(previewCert.fileName || '') ||
-                previewCert.fileUrl.startsWith('data:image/') ? (
-                <img
-                  src={previewCertUrl || previewCert.fileUrl}
-                  alt={previewCert.eventName}
-                  referrerPolicy="no-referrer"
-                  className="mx-auto max-h-[58dvh] sm:max-h-[62vh] w-full rounded-xl bg-slate-50 object-contain dark:bg-slate-950"
-                />
-              ) : (
-                <div className="space-y-3">
-                  <iframe
-                    title={previewCert.eventName}
-                    src={previewCertUrl || previewCert.fileUrl}
-                    className="h-[46dvh] sm:h-[58vh] w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950"
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs dark:border-slate-800 dark:bg-slate-950">
-                    <span className="text-slate-600 dark:text-slate-300">
-                      Jika PDF tidak muncul penuh di HP, buka atau unduh langsung:
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openOrDownloadFile(
-                            previewCert.fileUrl,
-                            previewCert.fileName || `${previewCert.eventName}.pdf`,
-                            'open'
-                          )
-                        }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                      >
-                        Buka PDF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openOrDownloadFile(
-                            previewCert.fileUrl,
-                            previewCert.fileName || `${previewCert.eventName}.pdf`,
-                            'download'
-                          )
-                        }
-                        className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700"
-                      >
-                        Unduh
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {previewCert.description && (
-                <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  {previewCert.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Certificate & Document Preview Modal */}
+      <FilePreviewModal
+        open={Boolean(previewItem)}
+        title={previewItem?.title || ''}
+        subtitle={previewItem?.subtitle}
+        description={previewItem?.description}
+        fileUrl={previewItem?.fileUrl || ''}
+        fileName={previewItem?.fileName}
+        fileType={previewItem?.fileType}
+        onClose={() => setPreviewItem(null)}
+        onNotify={onNotify}
+      />
 
       {/* Lightbox */}
       {lightboxImage && (

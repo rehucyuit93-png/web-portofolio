@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   deleteStorageFile,
   openOrDownloadFile,
-  resolveStoredFileUrl,
   syncBlobVisibility,
   uploadFileToStorage,
 } from '../../lib/storageUpload';
 import type { FileTypeTag, PortfolioDocument } from '../../types/portfolio';
+import { FilePreviewModal } from '../FilePreviewModal';
 
 interface DocumentsSectionProps {
   uid: string;
@@ -107,45 +107,6 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
     setIsPublic(doc.isPublic);
     setShowModal(true);
   };
-
-  const [previewBlobUrl, setPreviewBlobUrl] = useState<string>('');
-  const [previewMimeType, setPreviewMimeType] = useState<string>('');
-  const [loadingPreview, setLoadingPreview] = useState(false);
-
-  useEffect(() => {
-    if (!previewDoc) {
-      setPreviewBlobUrl('');
-      setPreviewMimeType('');
-      setLoadingPreview(false);
-      return;
-    }
-    let active = true;
-    let revokeUrl = '';
-    setLoadingPreview(true);
-    resolveStoredFileUrl(previewDoc.fileUrl)
-      .then(({ resolvedUrl, isObjectUrl, mimeType }) => {
-        if (!active) {
-          if (isObjectUrl && resolvedUrl) URL.revokeObjectURL(resolvedUrl);
-          return;
-        }
-        if (isObjectUrl) revokeUrl = resolvedUrl;
-        setPreviewBlobUrl(resolvedUrl);
-        setPreviewMimeType(mimeType || '');
-      })
-      .catch((err: unknown) => {
-        if (active) {
-          onNotify('error', err instanceof Error ? err.message : 'Gagal memuat pratinjau dokumen.');
-        }
-      })
-      .finally(() => {
-        if (active) setLoadingPreview(false);
-      });
-
-    return () => {
-      active = false;
-      if (revokeUrl) URL.revokeObjectURL(revokeUrl);
-    };
-  }, [previewDoc, onNotify]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -617,132 +578,19 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
       )}
 
       {/* Preview Modal */}
-      {previewDoc && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-2.5 sm:p-4 backdrop-blur-sm"
-          onClick={() => setPreviewDoc(null)}
-        >
-          <div
-            className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4 dark:border-slate-800">
-              <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
-                  {previewDoc.title}
-                </h3>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {previewDoc.category} · {previewDoc.year} · {previewDoc.fileType}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() =>
-                    openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'open').catch((err: unknown) =>
-                      onNotify('error', err instanceof Error ? err.message : 'Gagal membuka dokumen.')
-                    )
-                  }
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  <i className="fa-solid fa-up-right-from-square" aria-hidden="true" />
-                  <span className="hidden sm:inline">Buka Penuh</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'download').catch((err: unknown) =>
-                      onNotify('error', err instanceof Error ? err.message : 'Gagal mengunduh dokumen.')
-                    )
-                  }
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                >
-                  <i className="fa-solid fa-download" aria-hidden="true" />
-                  <span>Unduh</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewDoc(null)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  aria-label="Tutup pratinjau"
-                >
-                  <i className="fa-solid fa-xmark" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-3.5 sm:p-5">
-              {loadingPreview ? (
-                <div className="flex h-[45dvh] sm:h-[55vh] flex-col items-center justify-center gap-3 text-xs text-slate-500">
-                  <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
-                  <span>Memuat berkas dokumen...</span>
-                </div>
-              ) : previewMimeType.startsWith('image/') ||
-                previewDoc.fileType === 'JPG' ||
-                previewDoc.fileType === 'PNG' ? (
-                <img
-                  src={previewBlobUrl || previewDoc.fileUrl}
-                  alt={previewDoc.title}
-                  referrerPolicy="no-referrer"
-                  className="mx-auto max-h-[58dvh] sm:max-h-[62vh] w-full rounded-xl bg-slate-50 object-contain dark:bg-slate-950"
-                />
-              ) : previewDoc.fileType === 'PDF' ? (
-                <div className="space-y-3">
-                  <iframe
-                    title={previewDoc.title}
-                    src={previewBlobUrl || previewDoc.fileUrl}
-                    className="h-[46dvh] sm:h-[58vh] w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950"
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs dark:border-slate-800 dark:bg-slate-950">
-                    <span className="text-slate-600 dark:text-slate-300">
-                      Jika PDF tidak tampil penuh di browser HP, buka atau unduh langsung:
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'open')}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                      >
-                        Buka PDF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'download')}
-                        className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700"
-                      >
-                        Unduh
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 sm:p-8 text-center dark:border-slate-800 dark:bg-slate-950">
-                  <i className="fa-solid fa-file-lines text-4xl text-blue-600" aria-hidden="true" />
-                  <p className="mt-3 break-words text-sm font-semibold text-slate-900 dark:text-white">
-                    {previewDoc.fileName}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Pratinjau langsung tersedia untuk PDF dan gambar. Klik tombol di bawah untuk mengunduh berkas {previewDoc.fileType}.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => openOrDownloadFile(previewDoc.fileUrl, previewDoc.fileName, 'download')}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                  >
-                    <i className="fa-solid fa-download" aria-hidden="true" />
-                    <span>Buka / Unduh Berkas</span>
-                  </button>
-                </div>
-              )}
-              {previewDoc.description && (
-                <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  {previewDoc.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <FilePreviewModal
+        open={Boolean(previewDoc)}
+        title={previewDoc?.title || ''}
+        subtitle={
+          previewDoc ? `${previewDoc.category} · ${previewDoc.year} · ${previewDoc.fileType}` : undefined
+        }
+        description={previewDoc?.description}
+        fileUrl={previewDoc?.fileUrl || ''}
+        fileName={previewDoc?.fileName || ''}
+        fileType={previewDoc?.fileType}
+        onClose={() => setPreviewDoc(null)}
+        onNotify={onNotify}
+      />
     </div>
   );
 };
