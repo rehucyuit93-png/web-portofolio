@@ -318,7 +318,7 @@ service cloud.firestore {
           (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'year', 'description', 'fileName', 'fileType', 'fileSize', 'fileUrl', 'storagePath', 'isPublic', 'updatedAt'])) ||
           isAdmin()
         );
-      allow delete: if isValidId(docId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow delete: if isValidId(docId) && isSignedIn() && (isAdmin() || (resource != null && existing().uid == request.auth.uid));
     }
 
     match /certificates/{certId} {
@@ -340,7 +340,7 @@ service cloud.firestore {
           (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['eventName', 'organizer', 'year', 'description', 'fileName', 'fileUrl', 'storagePath', 'isPublic', 'updatedAt'])) ||
           isAdmin()
         );
-      allow delete: if isValidId(certId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow delete: if isValidId(certId) && isSignedIn() && (isAdmin() || (resource != null && existing().uid == request.auth.uid));
     }
 
     match /achievements/{achId} {
@@ -362,7 +362,7 @@ service cloud.firestore {
           (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'level', 'year', 'description', 'photoUrl', 'storagePath', 'isPublic', 'updatedAt'])) ||
           isAdmin()
         );
-      allow delete: if isValidId(achId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow delete: if isValidId(achId) && isSignedIn() && (isAdmin() || (resource != null && existing().uid == request.auth.uid));
     }
 
     match /activities/{actId} {
@@ -384,7 +384,7 @@ service cloud.firestore {
           (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'date', 'year', 'description', 'photoUrl', 'storagePath', 'isPublic', 'updatedAt'])) ||
           isAdmin()
         );
-      allow delete: if isValidId(actId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow delete: if isValidId(actId) && isSignedIn() && (isAdmin() || (resource != null && existing().uid == request.auth.uid));
     }
 
     match /galleries/{galId} {
@@ -404,7 +404,7 @@ service cloud.firestore {
           (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'album', 'year', 'caption', 'isPublic'])) ||
           isAdmin()
         );
-      allow delete: if isValidId(galId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow delete: if isValidId(galId) && isSignedIn() && (isAdmin() || (resource != null && existing().uid == request.auth.uid));
     }
 
     match /logs/{logId} {
@@ -463,7 +463,7 @@ service cloud.firestore {
           (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'role', 'nipNisn', 'jabatanKelas', 'education', 'expertise', 'bio', 'photoURL', 'isPublished', 'featuredDocuments', 'featuredCertificates', 'featuredAchievements', 'featuredGalleries', 'updatedAt'])) ||
           isAdmin()
         );
-      allow delete: if isValidUsername(username) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow delete: if isValidUsername(username) && isSignedIn() && (isAdmin() || (resource != null && existing().uid == request.auth.uid));
     }
 
     match /fileBlobs/{blobId} {
@@ -487,11 +487,12 @@ service cloud.firestore {
           (existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['isPublic'])) ||
           isAdmin()
         );
-      allow delete: if isValidId(blobId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow delete: if isValidId(blobId) && isSignedIn() && (isAdmin() || (resource != null && existing().uid == request.auth.uid));
 
       match /chunks/{chunkId} {
         allow get: if isValidId(blobId)
           && isValidId(chunkId)
+          && exists(/databases/$(database)/documents/fileBlobs/$(blobId))
           && (
             get(/databases/$(database)/documents/fileBlobs/$(blobId)).data.isPublic == true ||
             (isSignedIn() && (get(/databases/$(database)/documents/fileBlobs/$(blobId)).data.uid == request.auth.uid || isAdmin()))
@@ -503,9 +504,10 @@ service cloud.firestore {
           && isValidFileBlobChunk(incoming())
           && incoming().uid == request.auth.uid
           && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/fileBlobs/$(blobId))
           && get(/databases/$(database)/documents/fileBlobs/$(blobId)).data.uid == request.auth.uid;
         allow update: if false;
-        allow delete: if isValidId(blobId) && isValidId(chunkId) && isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+        allow delete: if isValidId(blobId) && isValidId(chunkId) && isSignedIn() && (isAdmin() || (resource != null && existing().uid == request.auth.uid));
       }
     }
   }

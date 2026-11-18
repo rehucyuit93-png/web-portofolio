@@ -25,7 +25,10 @@ function createFirestoreDb(): Firestore {
   try {
     return initializeFirestore(
       app,
-      { experimentalAutoDetectLongPolling: true },
+      {
+        experimentalAutoDetectLongPolling: true,
+        ignoreUndefinedProperties: true,
+      },
       firebaseConfig.firestoreDatabaseId
     );
   } catch {
@@ -262,6 +265,7 @@ export async function testFirestoreConnection(): Promise<FirestoreConnectionStat
 
       if (
         code === 'permission-denied' ||
+        code === 'unauthenticated' ||
         rawMsg.includes('Missing or insufficient permissions') ||
         rawMsg.includes('PERMISSION_DENIED')
       ) {
@@ -273,12 +277,13 @@ export async function testFirestoreConnection(): Promise<FirestoreConnectionStat
         lower.includes('the client is offline') ||
         lower.includes('could not reach cloud firestore') ||
         code === 'unavailable' ||
+        code === 'aborted' ||
         code === 'deadline-exceeded';
 
       if (isTransientOffline) {
         if (i === 0 && navigator.onLine) {
           await ensureFirestoreNetworkOnline();
-          await new Promise((r) => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 500));
           continue;
         }
         console.error('Please check your Firebase configuration (client is offline):', rawMsg);

@@ -233,12 +233,43 @@ async function runEnsureUserInitialized(params: {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      if (isBootstrapAdmin) {
+        const adminMarkerRef = doc(db, 'admins', params.uid);
+        const adminMarkerSnap = await getDoc(adminMarkerRef).catch(() => null);
+        if (!adminMarkerSnap || !adminMarkerSnap.exists()) {
+          await setDoc(adminMarkerRef, {
+            uid: params.uid,
+            grantedBy: params.uid,
+            createdAt: serverTimestamp(),
+          }).catch(() => undefined);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `users/${params.uid}`);
     }
     account = newAccount;
   } else {
     account = accountSnap.data() as UserAccount;
+    if (isBootstrapAdmin && account.role !== 'admin') {
+      try {
+        await updateDoc(userRef, {
+          role: 'admin',
+          updatedAt: serverTimestamp(),
+        });
+        const adminMarkerRef = doc(db, 'admins', params.uid);
+        const adminMarkerSnap = await getDoc(adminMarkerRef).catch(() => null);
+        if (!adminMarkerSnap || !adminMarkerSnap.exists()) {
+          await setDoc(adminMarkerRef, {
+            uid: params.uid,
+            grantedBy: params.uid,
+            createdAt: serverTimestamp(),
+          }).catch(() => undefined);
+        }
+        account = { ...account, role: 'admin' };
+      } catch (error) {
+        console.warn('Non-fatal bootstrap admin upgrade warning:', error);
+      }
+    }
   }
 
   let profileSnap;
@@ -312,11 +343,31 @@ async function runEnsureUserInitialized(params: {
   }
 
   // Ensure initial public portfolio document exists so public URL works right away (non-blocking on slug collision)
-  const safeUsername = sanitizeUsername(profile.username || defaultUsername);
+  let safeUsername = sanitizeUsername(profile.username || defaultUsername);
   try {
-    const pubRef = doc(db, 'publicPortfolios', safeUsername);
-    const pubSnap = await getDoc(pubRef);
-    if (!pubSnap.exists()) {
+    let pubRef = doc(db, 'publicPortfolios', safeUsername);
+    let pubSnap = await getDoc(pubRef).catch(() => null);
+
+    if (!pubSnap || (pubSnap.exists() && pubSnap.data()?.uid !== params.uid)) {
+      const fallbackSlug = sanitizeUsername(`${safeUsername.slice(0, 36)}-${params.uid.slice(0, 6)}`);
+      safeUsername = fallbackSlug;
+      pubRef = doc(db, 'publicPortfolios', safeUsername);
+      pubSnap = await getDoc(pubRef).catch(() => null);
+      if (profile.username !== safeUsername) {
+        await updateDoc(profileRef, {
+          username: safeUsername,
+          updatedAt: serverTimestamp(),
+        }).catch(() => undefined);
+        await updateDoc(userRef, {
+          username: safeUsername,
+          updatedAt: serverTimestamp(),
+        }).catch(() => undefined);
+        profile = { ...profile, username: safeUsername };
+        account = { ...account, username: safeUsername };
+      }
+    }
+
+    if (pubSnap && !pubSnap.exists()) {
       await setDoc(pubRef, {
         uid: params.uid,
         username: safeUsername,
@@ -357,8 +408,17 @@ export async function saveProfile(
   const cleanUsername = sanitizeUsername(data.username);
 
   if (previousUsername && previousUsername !== cleanUsername) {
-    const targetSnap = await getDoc(doc(db, 'publicPortfolios', cleanUsername));
-    if (targetSnap.exists() && targetSnap.data()?.uid !== uid) {
+    let targetSnap = null;
+    try {
+      targetSnap = await getDoc(doc(db, 'publicPortfolios', cleanUsername));
+    } catch (err: unknown) {
+      const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+      if (msg.includes('permission') || msg.includes('insufficient')) {
+        throw new Error('Username URL publik tersebut sudah digunakan pengguna lain. Pilih username lain.');
+      }
+      handleFirestoreError(err, OperationType.GET, `publicPortfolios/${cleanUsername}`);
+    }
+    if (targetSnap && targetSnap.exists() && targetSnap.data()?.uid !== uid) {
       throw new Error('Username URL publik tersebut sudah digunakan pengguna lain. Pilih username lain.');
     }
   }
@@ -398,10 +458,15 @@ export async function saveProfile(
   }
 
   if (previousUsername && previousUsername !== cleanUsername) {
+    const cleanPrev = sanitizeUsername(previousUsername);
     try {
-      await deleteDoc(doc(db, 'publicPortfolios', previousUsername));
+      const prevRef = doc(db, 'publicPortfolios', cleanPrev);
+      const prevSnap = await getDoc(prevRef).catch(() => null);
+      if (prevSnap && prevSnap.exists() && prevSnap.data()?.uid === uid) {
+        await deleteDoc(prevRef);
+      }
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `publicPortfolios/${previousUsername}`);
+      console.warn(`Non-fatal previous publicPortfolio delete warning (${cleanPrev}):`, error);
     }
   }
 
@@ -426,7 +491,7 @@ export async function syncPublicPortfolio(
   const path = `publicPortfolios/${username}`;
   const pubRef = doc(db, 'publicPortfolios', username);
 
-  const MAX_PUBLIC_BYTES = 750000;
+  const MAX_PUBLIC_BYTES = 650000;
   let remainingBudget = Math.max(100000, MAX_PUBLIC_BYTES - (profile.photoURL?.length || 0));
 
   function takeWithinBudget<T extends Record<string, unknown>>(items: T[], sectionMaxBytes: number): T[] {
@@ -453,7 +518,7 @@ export async function syncPublicPortfolio(
         category: d.category,
         year: d.year,
         fileType: d.fileType,
-        fileUrl: d.fileUrl.length > 220000 ? '' : d.fileUrl,
+        fileUrl: d.fileUrl.length > 200000 ? '' : d.fileUrl,
         description: d.description || '',
       })),
     180000
@@ -468,7 +533,8 @@ export async function syncPublicPortfolio(
         eventName: c.eventName,
         organizer: c.organizer,
         year: c.year,
-        fileUrl: c.fileUrl.length > 220000 ? '' : c.fileUrl,
+        fileName: c.fileName || '',
+        fileUrl: c.fileUrl.length > 200000 ? '' : c.fileUrl,
         description: c.description || '',
       })),
     200000
@@ -751,14 +817,18 @@ export async function adminUpdateUserRoleOrStatus(
       ...updates,
       updatedAt: serverTimestamp(),
     });
+    const adminRef = doc(db, 'admins', targetUid);
     if (updates.role === 'admin') {
-      await setDoc(doc(db, 'admins', targetUid), {
+      await setDoc(adminRef, {
         uid: targetUid,
         grantedBy: adminUid,
         createdAt: serverTimestamp(),
       });
     } else if (updates.role && (updates.role === 'guru' || updates.role === 'siswa')) {
-      await deleteDoc(doc(db, 'admins', targetUid)).catch(() => undefined);
+      const adminSnap = await getDoc(adminRef).catch(() => null);
+      if (adminSnap && adminSnap.exists()) {
+        await deleteDoc(adminRef).catch(() => undefined);
+      }
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
@@ -769,8 +839,16 @@ export async function adminDeleteUserRecord(targetUid: string): Promise<void> {
   const path = `users/${targetUid}`;
   try {
     await deleteDoc(doc(db, 'users', targetUid));
-    await deleteDoc(doc(db, 'profiles', targetUid)).catch(() => undefined);
-    await deleteDoc(doc(db, 'admins', targetUid)).catch(() => undefined);
+    const profileRef = doc(db, 'profiles', targetUid);
+    const profileSnap = await getDoc(profileRef).catch(() => null);
+    if (profileSnap && profileSnap.exists()) {
+      await deleteDoc(profileRef).catch(() => undefined);
+    }
+    const adminRef = doc(db, 'admins', targetUid);
+    const adminSnap = await getDoc(adminRef).catch(() => null);
+    if (adminSnap && adminSnap.exists()) {
+      await deleteDoc(adminRef).catch(() => undefined);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }

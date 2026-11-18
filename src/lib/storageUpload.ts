@@ -25,8 +25,8 @@ export interface UploadResult {
   storedInline?: boolean;
 }
 
-const MAX_INLINE_SINGLE_DOC_BYTES = 480 * 1024;
-const MAX_CHUNKED_DOC_BYTES = 5 * 1024 * 1024; // 5 MB via Firestore chunked storage
+const MAX_INLINE_SINGLE_DOC_BYTES = 145 * 1024;
+const MAX_CHUNKED_DOC_BYTES = 7 * 1024 * 1024; // 7 MB via Firestore chunked storage
 const CHUNK_CHAR_SIZE = 420000;
 const BLOB_CACHE = new Map<string, Blob>();
 
@@ -147,7 +147,7 @@ async function uploadChunkedBlobToFirestore(
     chunks.push(base64.slice(i, i + CHUNK_CHAR_SIZE));
   }
   if (chunks.length === 0 || chunks.length > 28) {
-    throw new Error('Ukuran berkas melebihi kapasitas penyimpanan pecahan Firestore (maks 5 MB).');
+    throw new Error('Ukuran berkas melebihi kapasitas penyimpanan pecahan Firestore (maks 7 MB).');
   }
 
   const blobId = `blob_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -159,20 +159,31 @@ async function uploadChunkedBlobToFirestore(
     fileName: file.name.slice(0, 255) || 'berkas',
     mimeType: mimeType.slice(0, 150),
     chunkCount: chunks.length,
-    totalSize: file.size,
+    totalSize: Math.max(1, file.size),
     isPublic: true,
     createdAt: serverTimestamp(),
   });
 
-  for (let i = 0; i < chunks.length; i++) {
-    await setDoc(doc(db, 'fileBlobs', blobId, 'chunks', String(i)), {
-      uid,
-      index: i,
-      data: chunks[i],
-      createdAt: serverTimestamp(),
-    });
-    const pct = 20 + Math.round(((i + 1) / chunks.length) * 78);
-    onProgress?.(pct);
+  try {
+    for (let i = 0; i < chunks.length; i++) {
+      await setDoc(doc(db, 'fileBlobs', blobId, 'chunks', String(i)), {
+        uid,
+        index: i,
+        data: chunks[i],
+        createdAt: serverTimestamp(),
+      });
+      const pct = 20 + Math.round(((i + 1) / chunks.length) * 78);
+      onProgress?.(pct);
+    }
+  } catch (err) {
+    // Cleanup partial chunks and parent metadata if any chunk fails
+    await Promise.all(
+      Array.from({ length: chunks.length }, (_, idx) =>
+        deleteDoc(doc(db, 'fileBlobs', blobId, 'chunks', String(idx))).catch(() => undefined)
+      )
+    );
+    await deleteDoc(parentRef).catch(() => undefined);
+    throw err;
   }
 
   const blob = base64ToBlob(base64, mimeType);
@@ -212,12 +223,12 @@ async function createInlineFallback(
 
   if (file.size > MAX_CHUNKED_DOC_BYTES) {
     throw new Error(
-      `Ukuran berkas maksimal 5 MB saat disimpan di database (file Anda ${(file.size / (1024 * 1024)).toFixed(1)} MB). Kompres berkas atau tempel URL Google Drive/HTTPS.`
+      `Ukuran berkas maksimal 7 MB saat disimpan di database (file Anda ${(file.size / (1024 * 1024)).toFixed(1)} MB). Kompres berkas atau tempel URL Google Drive/HTTPS.`
     );
   }
 
   const dataUrl = await readFileAsDataUrl(file);
-  if (file.size <= MAX_INLINE_SINGLE_DOC_BYTES && dataUrl.length <= 680000) {
+  if (file.size <= MAX_INLINE_SINGLE_DOC_BYTES && dataUrl.length <= 200000) {
     onProgress?.(100);
     return {
       downloadUrl: dataUrl,
@@ -308,6 +319,17 @@ export async function uploadFileToStorage(
     });
     return result;
   } catch (err) {
+    const code = ((err as { code?: string })?.code || '').toLowerCase();
+    const rawMsg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+    if (
+      code === 'storage/unauthorized' ||
+      code === 'storage/bucket-not-found' ||
+      code === 'storage/project-not-found' ||
+      code === 'storage/retry-limit-exceeded' ||
+      rawMsg.includes('retry-limit-exceeded')
+    ) {
+      cachedBucketAvailable = false;
+    }
     const msg = mapStorageError(err);
     console.warn('Storage upload unavailable, switching to Firestore fallback:', msg);
     return createInlineFallback(folder, uid, file, onProgress);
