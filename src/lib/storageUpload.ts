@@ -2,12 +2,13 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocFromCache,
   serverTimestamp,
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
-import { db, firebaseConfig, storage } from './firebase';
+import { deleteObject, ref } from 'firebase/storage';
+import { db, storage } from './firebase';
 
 export type StorageFolder =
   | 'profile-photo'
@@ -26,38 +27,12 @@ export interface UploadResult {
 }
 
 const MAX_INLINE_SINGLE_DOC_BYTES = 145 * 1024;
-const MAX_CHUNKED_DOC_BYTES = 7 * 1024 * 1024; // 7 MB via Firestore chunked storage
-const CHUNK_CHAR_SIZE = 420000;
+const MAX_CHUNKED_DOC_BYTES = 5 * 1024 * 1024; // 5 MB gratis via pecahan Firestore (hemat kuota Spark)
+const CHUNK_CHAR_SIZE = 480000; // Ukuran chunk optimal agar jumlah baca/tulis Firestore minimal
 const BLOB_CACHE = new Map<string, Blob>();
 
 export function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
-}
-
-let cachedBucketAvailable: boolean | null = null;
-
-async function isStorageBucketAvailable(): Promise<boolean> {
-  if (cachedBucketAvailable !== null) return cachedBucketAvailable;
-  if (!firebaseConfig.storageBucket) {
-    cachedBucketAvailable = false;
-    return false;
-  }
-
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), 2500);
-  try {
-    const resp = await fetch(
-      `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(firebaseConfig.storageBucket)}/o`,
-      { method: 'GET', signal: controller.signal }
-    );
-    cachedBucketAvailable = resp.status !== 404;
-    return cachedBucketAvailable;
-  } catch {
-    cachedBucketAvailable = false;
-    return false;
-  } finally {
-    window.clearTimeout(timer);
-  }
 }
 
 function isImageFile(file: File): boolean {
@@ -146,8 +121,8 @@ async function uploadChunkedBlobToFirestore(
   for (let i = 0; i < base64.length; i += CHUNK_CHAR_SIZE) {
     chunks.push(base64.slice(i, i + CHUNK_CHAR_SIZE));
   }
-  if (chunks.length === 0 || chunks.length > 28) {
-    throw new Error('Ukuran berkas melebihi kapasitas penyimpanan pecahan Firestore (maks 7 MB).');
+  if (chunks.length === 0 || chunks.length > 16) {
+    throw new Error('Ukuran berkas melebihi batas paket gratis Firestore (maks 5 MB). Gunakan URL Google Drive untuk berkas lebih besar.');
   }
 
   const blobId = `blob_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -208,9 +183,13 @@ async function createInlineFallback(
 ): Promise<UploadResult> {
   onProgress?.(25);
   if (isImageFile(file)) {
-    const maxDim = folder === 'profile-photo' ? 560 : 880;
+    const maxDim = folder === 'profile-photo' ? 520 : folder === 'achievements' || folder === 'activities' ? 820 : 880;
     const maxChars =
-      folder === 'profile-photo' ? 120000 : folder === 'achievements' ? 85000 : 145000;
+      folder === 'profile-photo'
+        ? 95000
+        : folder === 'achievements' || folder === 'activities'
+          ? 75000
+          : 120000;
     const dataUrl = await compressImageToDataUrl(file, maxDim, maxChars);
     onProgress?.(100);
     return {
@@ -224,7 +203,7 @@ async function createInlineFallback(
 
   if (file.size > MAX_CHUNKED_DOC_BYTES) {
     throw new Error(
-      `Ukuran berkas maksimal 7 MB saat disimpan di database (file Anda ${(file.size / (1024 * 1024)).toFixed(1)} MB). Kompres berkas atau tempel URL Google Drive/HTTPS.`
+      `Ukuran berkas maksimal 5 MB agar tetap muat di paket gratis Firebase (file Anda ${(file.size / (1024 * 1024)).toFixed(1)} MB). Kompres berkas atau tempel URL Google Drive/HTTPS.`
     );
   }
 
@@ -243,98 +222,15 @@ async function createInlineFallback(
   return uploadChunkedBlobToFirestore(uid, file, dataUrl, onProgress);
 }
 
-function mapStorageError(error: unknown): string {
-  const code = (error as { code?: string })?.code || '';
-  const msg = error instanceof Error ? error.message : String(error);
-
-  if (code === 'storage/unauthorized') {
-    return 'Izin unggah Firebase Storage ditolak. Pastikan storage.rules sudah diterapkan.';
-  }
-  if (code === 'storage/bucket-not-found' || code === 'storage/project-not-found') {
-    return `Bucket Firebase Storage (${firebaseConfig.storageBucket}) belum diaktifkan di Firebase Console -> Storage.`;
-  }
-  if (code === 'storage/retry-limit-exceeded') {
-    return 'Koneksi unggah ke Firebase Storage terputus (timeout).';
-  }
-  return msg || 'Gagal mengunggah berkas ke Firebase Storage.';
-}
-
 export async function uploadFileToStorage(
   folder: StorageFolder,
   uid: string,
   file: File,
   onProgress?: (percent: number) => void
 ): Promise<UploadResult> {
-  const bucketReady = await isStorageBucketAvailable();
-  if (!bucketReady) {
-    return createInlineFallback(folder, uid, file, onProgress);
-  }
-
-  const safeName = `${Date.now()}_${sanitizeFileName(file.name)}`;
-  const storagePath = `${folder}/${uid}/${safeName}`;
-  const storageRef = ref(storage, storagePath);
-
-  try {
-    const result = await new Promise<UploadResult>((resolve, reject) => {
-      const task = uploadBytesResumable(storageRef, file, {
-        contentType: file.type || 'application/octet-stream',
-      });
-
-      const hardTimeout = window.setTimeout(() => {
-        try {
-          task.cancel();
-        } catch {
-          // ignore
-        }
-        reject(new Error('storage/retry-limit-exceeded'));
-      }, 7000);
-
-      task.on(
-        'state_changed',
-        (snapshot) => {
-          if (onProgress && snapshot.totalBytes > 0) {
-            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            onProgress(pct);
-          }
-        },
-        (error) => {
-          window.clearTimeout(hardTimeout);
-          reject(error);
-        },
-        async () => {
-          window.clearTimeout(hardTimeout);
-          try {
-            const downloadUrl = await getDownloadURL(task.snapshot.ref);
-            resolve({
-              downloadUrl,
-              storagePath,
-              fileName: file.name,
-              fileSize: file.size,
-              storedInline: false,
-            });
-          } catch (err) {
-            reject(err);
-          }
-        }
-      );
-    });
-    return result;
-  } catch (err) {
-    const code = ((err as { code?: string })?.code || '').toLowerCase();
-    const rawMsg = (err instanceof Error ? err.message : String(err)).toLowerCase();
-    if (
-      code === 'storage/unauthorized' ||
-      code === 'storage/bucket-not-found' ||
-      code === 'storage/project-not-found' ||
-      code === 'storage/retry-limit-exceeded' ||
-      rawMsg.includes('retry-limit-exceeded')
-    ) {
-      cachedBucketAvailable = false;
-    }
-    const msg = mapStorageError(err);
-    console.warn('Storage upload unavailable, switching to Firestore fallback:', msg);
-    return createInlineFallback(folder, uid, file, onProgress);
-  }
+  // Gunakan penyimpanan gratis Firestore (Spark Plan: gambar terkompresi inline & PDF terpecah)
+  // tanpa memerlukan paket berbayar Firebase Storage (Blaze).
+  return createInlineFallback(folder, uid, file, onProgress);
 }
 
 export async function syncBlobVisibility(fileUrl: string, isPublic: boolean): Promise<void> {
@@ -424,15 +320,21 @@ export async function resolveStoredFileUrl(
         mimeType: cached.type || undefined,
       };
     }
-    const parentSnap = await getDoc(doc(db, 'fileBlobs', blobId));
+    const parentRef = doc(db, 'fileBlobs', blobId);
+    const parentSnap = await getDocFromCache(parentRef)
+      .then((s) => (s.exists() ? s : getDoc(parentRef)))
+      .catch(() => getDoc(parentRef));
     if (!parentSnap.exists()) {
       throw new Error('Berkas tidak ditemukan di database.');
     }
     const meta = parentSnap.data() as { chunkCount: number; mimeType?: string };
     const chunkSnaps = await Promise.all(
-      Array.from({ length: meta.chunkCount }, (_, idx) =>
-        getDoc(doc(db, 'fileBlobs', blobId, 'chunks', String(idx)))
-      )
+      Array.from({ length: meta.chunkCount }, (_, idx) => {
+        const chunkRef = doc(db, 'fileBlobs', blobId, 'chunks', String(idx));
+        return getDocFromCache(chunkRef)
+          .then((s) => (s.exists() ? s : getDoc(chunkRef)))
+          .catch(() => getDoc(chunkRef));
+      })
     );
     const fullBase64 = chunkSnaps
       .map((s) => (s.exists() ? String((s.data() as { data?: string }).data || '') : ''))

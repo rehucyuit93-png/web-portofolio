@@ -479,19 +479,29 @@ export async function saveProfile(
   return updatedProfile;
 }
 
+function computePublicPayloadSignature(payloadWithoutTs: Record<string, unknown>): string {
+  const str = JSON.stringify(payloadWithoutTs);
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+  }
+  return `${str.length}_${hash >>> 0}`;
+}
+
 export async function syncPublicPortfolio(
   profile: UserProfile,
   role: UserRole,
   docs: PortfolioDocument[],
   certs: Certificate[],
   achs: Achievement[],
-  gals: GalleryItem[]
+  gals: GalleryItem[],
+  options?: { skipIfUnchanged?: boolean }
 ): Promise<void> {
   const username = sanitizeUsername(profile.username);
   const path = `publicPortfolios/${username}`;
   const pubRef = doc(db, 'publicPortfolios', username);
 
-  const MAX_PUBLIC_BYTES = 820000;
+  const MAX_PUBLIC_BYTES = 760000;
   let remainingBudget = Math.max(120000, MAX_PUBLIC_BYTES - (profile.photoURL?.length || 0));
 
   function takeWithinBudget<T extends Record<string, unknown>>(items: T[], sectionMaxBytes: number): T[] {
@@ -549,7 +559,7 @@ export async function syncPublicPortfolio(
         description: d.description || '',
       })),
     'fileUrl',
-    180000
+    160000
   );
 
   const featuredCertificates = takeAllWithMediaBudget(
@@ -567,7 +577,7 @@ export async function syncPublicPortfolio(
         description: c.description || '',
       })),
     'fileUrl',
-    200000
+    180000
   );
 
   const featuredAchievements = takeAllWithMediaBudget(
@@ -584,7 +594,7 @@ export async function syncPublicPortfolio(
         description: a.description || '',
       })),
     'photoUrl',
-    260000
+    240000
   );
 
   const featuredGalleries = takeWithinBudget(
@@ -602,7 +612,7 @@ export async function syncPublicPortfolio(
     remainingBudget
   );
 
-  const payload = {
+  const corePayload = {
     uid: profile.uid,
     username,
     fullName: clampStr(profile.fullName, 120) || 'Pengguna',
@@ -618,6 +628,22 @@ export async function syncPublicPortfolio(
     featuredCertificates,
     featuredAchievements,
     featuredGalleries,
+  };
+
+  const sigKey = `karyaloka_pub_sig_v2_${profile.uid}`;
+  const sig = computePublicPayloadSignature(corePayload);
+  if (options?.skipIfUnchanged) {
+    try {
+      if (localStorage.getItem(sigKey) === sig) {
+        return;
+      }
+    } catch {
+      // ignore localStorage access issues
+    }
+  }
+
+  const payload = {
+    ...corePayload,
     updatedAt: serverTimestamp(),
   };
 
@@ -627,6 +653,11 @@ export async function syncPublicPortfolio(
       await setDoc(pubRef, payload);
     } else {
       await updateDoc(pubRef, payload);
+    }
+    try {
+      localStorage.setItem(sigKey, sig);
+    } catch {
+      // ignore
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -774,10 +805,18 @@ export async function fetchAllAdminCollections(): Promise<{
   logs: AuditLog[];
 }> {
   const [usersSnap, docsSnap, certsSnap, achsSnap, logsSnap] = await Promise.all([
-    getDocs(collection(db, 'users')).catch((e) => handleFirestoreError(e, OperationType.LIST, 'users')),
-    getDocs(collection(db, 'documents')).catch((e) => handleFirestoreError(e, OperationType.LIST, 'documents')),
-    getDocs(collection(db, 'certificates')).catch((e) => handleFirestoreError(e, OperationType.LIST, 'certificates')),
-    getDocs(collection(db, 'achievements')).catch((e) => handleFirestoreError(e, OperationType.LIST, 'achievements')),
+    getDocs(query(collection(db, 'users'), limit(200))).catch((e) =>
+      handleFirestoreError(e, OperationType.LIST, 'users')
+    ),
+    getDocs(query(collection(db, 'documents'), limit(200))).catch((e) =>
+      handleFirestoreError(e, OperationType.LIST, 'documents')
+    ),
+    getDocs(query(collection(db, 'certificates'), limit(200))).catch((e) =>
+      handleFirestoreError(e, OperationType.LIST, 'certificates')
+    ),
+    getDocs(query(collection(db, 'achievements'), limit(200))).catch((e) =>
+      handleFirestoreError(e, OperationType.LIST, 'achievements')
+    ),
     getDocs(query(collection(db, 'logs'), limit(200))).catch((e) =>
       handleFirestoreError(e, OperationType.LIST, 'logs')
     ),

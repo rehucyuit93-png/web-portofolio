@@ -172,14 +172,19 @@ export default function App() {
 
       if (loggedUidRef.current !== user.uid) {
         loggedUidRef.current = user.uid;
-        writeAuditLog({
-          uid: user.uid,
-          userEmail: init.account.email,
-          userName: init.account.displayName,
-          action: 'LOGIN',
-          module: 'Autentikasi',
-          detail: 'Masuk ke dashboard KaryaLoka',
-        }).catch(() => undefined);
+        const loginThrottleKey = `karyaloka_login_at_${user.uid}`;
+        const lastLoginAt = Number(localStorage.getItem(loginThrottleKey) || '0');
+        if (Date.now() - lastLoginAt > 30 * 60 * 1000) {
+          localStorage.setItem(loginThrottleKey, String(Date.now()));
+          writeAuditLog({
+            uid: user.uid,
+            userEmail: init.account.email,
+            userName: init.account.displayName,
+            action: 'LOGIN',
+            module: 'Autentikasi',
+            detail: 'Masuk ke dashboard KaryaLoka',
+          }).catch(() => undefined);
+        }
       }
     } catch (err: unknown) {
       const friendly = formatFirestoreErrorForUser(err);
@@ -457,7 +462,8 @@ export default function App() {
         documents,
         certificates,
         achievements,
-        galleries
+        galleries,
+        { skipIfUnchanged: true }
       ).catch(() => undefined);
     }, 600);
 
