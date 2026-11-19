@@ -359,36 +359,113 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
                 </p>
               ) : (
                 <div className="mt-4 space-y-4">
-                  {data.featuredAchievements.map((ach) => (
-                    <div
-                      key={ach.id}
-                      className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900"
-                    >
-                      {ach.photoUrl && (
-                        <img
-                          src={ach.photoUrl}
-                          alt={ach.title}
-                          referrerPolicy="no-referrer"
-                          className="h-44 w-full rounded-xl bg-slate-100 object-contain p-1 sm:h-24 sm:w-32 shrink-0 dark:bg-slate-800"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                          <span>Tingkat {ach.level}</span>
-                          <span aria-hidden="true">·</span>
-                          <span className="font-mono-tabular">{ach.year}</span>
-                        </div>
-                        <h3 className="mt-1 text-base font-semibold text-slate-900 dark:text-white">
-                          {ach.title}
-                        </h3>
-                        {ach.description && (
-                          <p className="mt-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                            {ach.description}
-                          </p>
+                  {data.featuredAchievements.map((ach) => {
+                    const isDirectImage =
+                      Boolean(ach.photoUrl) &&
+                      !ach.photoUrl?.startsWith('firestore-blob://') &&
+                      !ach.photoUrl?.toLowerCase().startsWith('data:application/pdf') &&
+                      !ach.photoUrl?.toLowerCase().includes('.pdf') &&
+                      !ach.photoUrl?.toLowerCase().includes('drive.google.com');
+
+                    return (
+                      <div
+                        key={ach.id}
+                        className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-start dark:border-slate-800 dark:bg-slate-900"
+                      >
+                        {ach.photoUrl && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewItem({
+                                title: ach.title,
+                                subtitle: `Tingkat ${ach.level} · ${ach.year}`,
+                                description: ach.description,
+                                fileUrl: ach.photoUrl || '',
+                                fileName: `bukti-prestasi-${ach.title.slice(0, 40)}`,
+                              })
+                            }
+                            title="Pratinjau bukti prestasi"
+                            className="group relative flex h-44 w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 sm:h-24 sm:w-32 shrink-0 dark:border-slate-700 dark:bg-slate-800"
+                          >
+                            {isDirectImage ? (
+                              <>
+                                <img
+                                  src={ach.photoUrl}
+                                  alt={ach.title}
+                                  referrerPolicy="no-referrer"
+                                  className="h-full w-full rounded-lg object-contain"
+                                />
+                                <span className="no-print absolute right-1.5 bottom-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/75 text-[10px] text-white opacity-90 transition-opacity group-hover:opacity-100">
+                                  <i className="fa-solid fa-expand" aria-hidden="true" />
+                                </span>
+                              </>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                                <i className="fa-solid fa-file-shield text-2xl" aria-hidden="true" />
+                                <span className="text-[11px] font-semibold">Bukti Prestasi</span>
+                              </div>
+                            )}
+                          </button>
                         )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <span className="font-semibold text-violet-600 dark:text-violet-400">
+                              Tingkat {ach.level}
+                            </span>
+                            <span aria-hidden="true">·</span>
+                            <span className="font-mono-tabular">{ach.year}</span>
+                          </div>
+                          <h3 className="mt-1 text-base font-semibold text-slate-900 break-words dark:text-white">
+                            {ach.title}
+                          </h3>
+                          {ach.description && (
+                            <p className="mt-1.5 whitespace-pre-line break-words text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                              {ach.description}
+                            </p>
+                          )}
+                          {ach.photoUrl && (
+                            <div className="no-print mt-3 flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewItem({
+                                    title: ach.title,
+                                    subtitle: `Tingkat ${ach.level} · ${ach.year}`,
+                                    description: ach.description,
+                                    fileUrl: ach.photoUrl || '',
+                                    fileName: `bukti-prestasi-${ach.title.slice(0, 40)}`,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300"
+                              >
+                                <i className="fa-solid fa-eye" aria-hidden="true" />
+                                <span>Pratinjau</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openOrDownloadFile(
+                                    ach.photoUrl || '',
+                                    `bukti-prestasi-${ach.title.slice(0, 40)}`,
+                                    'download'
+                                  ).catch((err: unknown) =>
+                                    onNotify(
+                                      'error',
+                                      err instanceof Error ? err.message : 'Gagal mengunduh berkas.'
+                                    )
+                                  )
+                                }
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              >
+                                <i className="fa-solid fa-download" aria-hidden="true" />
+                                <span>Unduh</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>

@@ -508,10 +508,37 @@ export async function syncPublicPortfolio(
     return out;
   }
 
-  const featuredDocuments = takeWithinBudget(
-    docs
+  function takeAllWithMediaBudget<T extends Record<string, unknown>>(
+    items: T[],
+    mediaKey: keyof T,
+    sectionMaxBytes: number
+  ): T[] {
+    const out: T[] = [];
+    let used = 0;
+    for (const item of items) {
+      const size = JSON.stringify(item).length;
+      if (used + size <= sectionMaxBytes && remainingBudget - size >= 0) {
+        out.push(item);
+        used += size;
+        remainingBudget -= size;
+      } else {
+        const stripped = { ...item, [mediaKey]: '' };
+        const strippedSize = JSON.stringify(stripped).length;
+        if (remainingBudget - strippedSize >= 0) {
+          out.push(stripped);
+          used += strippedSize;
+          remainingBudget -= strippedSize;
+        }
+      }
+    }
+    return out;
+  }
+
+  const featuredDocuments = takeAllWithMediaBudget(
+    [...docs]
       .filter((d) => d.isPublic)
-      .slice(0, 20)
+      .sort((a, b) => b.year - a.year)
+      .slice(0, 50)
       .map((d) => ({
         id: d.id,
         title: d.title,
@@ -521,13 +548,15 @@ export async function syncPublicPortfolio(
         fileUrl: d.fileUrl.length > 200000 ? '' : d.fileUrl,
         description: d.description || '',
       })),
+    'fileUrl',
     180000
   );
 
-  const featuredCertificates = takeWithinBudget(
-    certs
+  const featuredCertificates = takeAllWithMediaBudget(
+    [...certs]
       .filter((c) => c.isPublic)
-      .slice(0, 20)
+      .sort((a, b) => b.year - a.year)
+      .slice(0, 50)
       .map((c) => ({
         id: c.id,
         eventName: c.eventName,
@@ -537,22 +566,25 @@ export async function syncPublicPortfolio(
         fileUrl: c.fileUrl.length > 200000 ? '' : c.fileUrl,
         description: c.description || '',
       })),
+    'fileUrl',
     200000
   );
 
-  const featuredAchievements = takeWithinBudget(
-    achs
+  const featuredAchievements = takeAllWithMediaBudget(
+    [...achs]
       .filter((a) => a.isPublic)
-      .slice(0, 20)
+      .sort((a, b) => b.year - a.year)
+      .slice(0, 50)
       .map((a) => ({
         id: a.id,
         title: a.title,
         level: a.level,
         year: a.year,
-        photoUrl: a.photoUrl || '',
+        photoUrl: (a.photoUrl || '').length > 200000 ? '' : a.photoUrl || '',
         description: a.description || '',
       })),
-    180000
+    'photoUrl',
+    200000
   );
 
   const featuredGalleries = takeWithinBudget(

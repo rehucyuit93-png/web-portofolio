@@ -1,8 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { formatDateDMY, getTodayISO } from '../../lib/dateFormat';
-import { deleteStorageFile, uploadFileToStorage } from '../../lib/storageUpload';
+import {
+  deleteStorageFile,
+  openOrDownloadFile,
+  resolveStoredFileUrl,
+  syncBlobVisibility,
+  uploadFileToStorage,
+} from '../../lib/storageUpload';
 import type { Achievement, AchievementLevel, Activity } from '../../types/portfolio';
 import { DateInput } from '../DateInput';
+import { FilePreviewModal } from '../FilePreviewModal';
 
 const LEVELS: AchievementLevel[] = [
   'Sekolah',
@@ -11,6 +18,105 @@ const LEVELS: AchievementLevel[] = [
   'Nasional',
   'Internasional',
 ];
+
+function isLikelyPdfOrDocProof(url?: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.startsWith('data:application/pdf') ||
+    lower.includes('.pdf') ||
+    lower.includes('drive.google.com')
+  );
+}
+
+const ProofThumbnail: React.FC<{
+  url: string;
+  title: string;
+  onPreview: () => void;
+}> = ({ url, title, onPreview }) => {
+  const [imgSrc, setImgSrc] = useState<string>(() =>
+    url.startsWith('firestore-blob://') ? '' : url
+  );
+  const [isNonImage, setIsNonImage] = useState<boolean>(() => isLikelyPdfOrDocProof(url));
+
+  useEffect(() => {
+    let active = true;
+    let revokeUrl = '';
+
+    if (!url) {
+      setImgSrc('');
+      setIsNonImage(false);
+      return;
+    }
+
+    if (!url.startsWith('firestore-blob://')) {
+      setImgSrc(url);
+      setIsNonImage(isLikelyPdfOrDocProof(url));
+      return;
+    }
+
+    resolveStoredFileUrl(url)
+      .then(({ resolvedUrl, isObjectUrl, mimeType }) => {
+        if (!active) {
+          if (isObjectUrl && resolvedUrl) URL.revokeObjectURL(resolvedUrl);
+          return;
+        }
+        if (isObjectUrl) revokeUrl = resolvedUrl;
+        if (mimeType && !mimeType.startsWith('image/')) {
+          setIsNonImage(true);
+          setImgSrc('');
+        } else {
+          setIsNonImage(false);
+          setImgSrc(resolvedUrl);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setIsNonImage(true);
+          setImgSrc('');
+        }
+      });
+
+    return () => {
+      active = false;
+      if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+    };
+  }, [url]);
+
+  if (isNonImage || !imgSrc) {
+    return (
+      <button
+        type="button"
+        onClick={onPreview}
+        title="Pratinjau bukti prestasi"
+        className="flex h-36 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-600 transition-colors hover:border-blue-400 hover:bg-blue-50/60 hover:text-blue-700 sm:h-24 sm:w-28 shrink-0 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:border-blue-600 dark:hover:text-blue-300"
+      >
+        <i className="fa-solid fa-file-shield text-2xl text-blue-600 dark:text-blue-400" aria-hidden="true" />
+        <span className="text-[11px] font-semibold">Bukti Prestasi</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onPreview}
+      title="Klik untuk memperbesar bukti prestasi"
+      className="group relative h-44 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 sm:h-24 sm:w-28 shrink-0 dark:border-slate-700 dark:bg-slate-800"
+    >
+      <img
+        src={imgSrc}
+        alt={title}
+        referrerPolicy="no-referrer"
+        onError={() => setIsNonImage(true)}
+        className="h-full w-full rounded-lg object-contain"
+      />
+      <span className="absolute right-1.5 bottom-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/75 text-[10px] text-white opacity-90 transition-opacity group-hover:opacity-100">
+        <i className="fa-solid fa-expand" aria-hidden="true" />
+      </span>
+    </button>
+  );
+};
 
 export const AchievementsSection: React.FC<{
   uid: string;
@@ -21,9 +127,11 @@ export const AchievementsSection: React.FC<{
   onNotify: (type: 'success' | 'error' | 'info', message: string) => void;
 }> = ({ uid, achievements, onCreate, onUpdate, onDelete, onNotify }) => {
   const [search, setSearch] = useState('');
+  const [levelFilter, setLevelFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Achievement | null>(null);
+  const [previewItem, setPreviewItem] = useState<Achievement | null>(null);
 
   const [title, setTitle] = useState('');
   const [level, setLevel] = useState<AchievementLevel>('Nasional');
@@ -33,6 +141,7 @@ export const AchievementsSection: React.FC<{
   const [storagePath, setStoragePath] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   const years = useMemo(
@@ -41,16 +150,21 @@ export const AchievementsSection: React.FC<{
   );
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return achievements
       .filter((a) => {
         const matchSearch =
-          a.title.toLowerCase().includes(search.toLowerCase()) ||
-          a.level.toLowerCase().includes(search.toLowerCase());
+          !q ||
+          a.title.toLowerCase().includes(q) ||
+          a.level.toLowerCase().includes(q) ||
+          (a.description || '').toLowerCase().includes(q) ||
+          String(a.year).includes(q);
+        const matchLevel = levelFilter === 'all' || a.level === levelFilter;
         const matchYear = yearFilter === 'all' || String(a.year) === yearFilter;
-        return matchSearch && matchYear;
+        return matchSearch && matchLevel && matchYear;
       })
       .sort((a, b) => b.year - a.year);
-  }, [achievements, search, yearFilter]);
+  }, [achievements, search, levelFilter, yearFilter]);
 
   const openCreate = () => {
     setEditing(null);
@@ -69,7 +183,7 @@ export const AchievementsSection: React.FC<{
     setTitle(item.title);
     setLevel(item.level);
     setYear(item.year);
-    setDescription(item.description);
+    setDescription(item.description || '');
     setPhotoUrl(item.photoUrl || '');
     setStoragePath(item.storagePath || '');
     setIsPublic(item.isPublic);
@@ -81,13 +195,14 @@ export const AchievementsSection: React.FC<{
     e.target.value = '';
     if (!file) return;
     setUploading(true);
+    setUploadPct(0);
     try {
-      const res = await uploadFileToStorage('achievements', uid, file);
+      const res = await uploadFileToStorage('achievements', uid, file, setUploadPct);
       setPhotoUrl(res.downloadUrl);
       setStoragePath(res.storagePath);
-      onNotify('success', 'Bukti foto prestasi berhasil dimuat.');
+      onNotify('success', 'Bukti prestasi berhasil dimuat.');
     } catch (err: unknown) {
-      onNotify('error', err instanceof Error ? err.message : 'Gagal mengunggah bukti foto.');
+      onNotify('error', err instanceof Error ? err.message : 'Gagal mengunggah bukti prestasi.');
     } finally {
       setUploading(false);
     }
@@ -106,6 +221,9 @@ export const AchievementsSection: React.FC<{
         storagePath,
         isPublic,
       };
+      if (payload.photoUrl) {
+        await syncBlobVisibility(payload.photoUrl, payload.isPublic);
+      }
       if (editing) {
         await onUpdate(editing.id, payload);
         onNotify('success', 'Data prestasi diperbarui.');
@@ -121,9 +239,12 @@ export const AchievementsSection: React.FC<{
     }
   };
 
+  const hasUploadedProof =
+    photoUrl.startsWith('data:') || photoUrl.startsWith('firestore-blob://');
+
   return (
     <div className="space-y-5">
-      <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:flex-row sm:items-center sm:p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-1 flex-wrap items-center gap-2">
           <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[200px]">
             <i className="fa-solid fa-magnifying-glass absolute top-1/2 left-3.5 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
@@ -131,22 +252,36 @@ export const AchievementsSection: React.FC<{
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama prestasi atau tingkat..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-3 pl-9 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              placeholder="Cari nama prestasi, tingkat, atau deskripsi..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-9 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
           </div>
-          <select
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono-tabular text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-          >
-            <option value="all">Semua Tahun</option>
-            {years.map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
-              </option>
-            ))}
-          </select>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+            <select
+              value={levelFilter}
+              onChange={(e) => setLevelFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            >
+              <option value="all">Semua Tingkat</option>
+              {LEVELS.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono-tabular text-xs font-medium text-slate-700 sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            >
+              <option value="all">Semua Tahun</option>
+              {years.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <button
@@ -164,16 +299,20 @@ export const AchievementsSection: React.FC<{
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
           <i className="fa-solid fa-trophy text-3xl text-slate-300 dark:text-slate-600" aria-hidden="true" />
           <h3 className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">
-            Belum ada catatan prestasi
+            {achievements.length === 0
+              ? 'Belum ada catatan prestasi'
+              : 'Tidak ada prestasi yang cocok dengan filter'}
           </h3>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Catat pencapaian akademik, lomba, maupun penghargaan profesional Anda.
+            {achievements.length === 0
+              ? 'Catat pencapaian akademik, lomba, maupun penghargaan profesional Anda.'
+              : 'Ubah kata kunci pencarian atau filter tingkat dan tahun untuk menampilkan semua prestasi.'}
           </p>
         </div>
       ) : (
         <div className="relative space-y-4 pl-5 before:absolute before:top-2 before:bottom-2 before:left-1.5 before:w-px before:bg-slate-200 sm:pl-6 sm:before:left-2 dark:before:bg-slate-800">
           {filtered.map((item) => (
-            <div
+            <article
               key={item.id}
               className="relative rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900"
             >
@@ -182,30 +321,65 @@ export const AchievementsSection: React.FC<{
                 className="absolute top-6 -left-[19px] h-3 w-3 rounded-full border-2 border-white bg-blue-600 sm:-left-[21px] dark:border-slate-950"
               />
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:gap-4">
+                <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:gap-4 min-w-0">
                   {item.photoUrl && (
-                    <img
-                      src={item.photoUrl}
-                      alt={item.title}
-                      referrerPolicy="no-referrer"
-                      className="h-40 w-full rounded-xl bg-slate-100 object-contain p-1 shrink-0 sm:h-20 sm:w-28 dark:bg-slate-800"
+                    <ProofThumbnail
+                      url={item.photoUrl}
+                      title={item.title}
+                      onPreview={() => setPreviewItem(item)}
                     />
                   )}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span className="font-semibold text-violet-600 dark:text-violet-400">
                         Tingkat {item.level}
                       </span>
                       <span aria-hidden="true">·</span>
                       <span className="font-mono-tabular">{item.year}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className={item.isPublic ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                        {item.isPublic ? 'Publik' : 'Privat'}
+                      </span>
                     </div>
-                    <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
+                    <h3 className="mt-1 text-base font-bold text-slate-900 break-words dark:text-white">
                       {item.title}
                     </h3>
                     {item.description && (
-                      <p className="mt-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                      <p className="mt-1.5 whitespace-pre-line break-words text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                         {item.description}
                       </p>
+                    )}
+
+                    {item.photoUrl && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewItem(item)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900/60"
+                        >
+                          <i className="fa-solid fa-eye" aria-hidden="true" />
+                          <span>Pratinjau Bukti</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openOrDownloadFile(
+                              item.photoUrl || '',
+                              `bukti-prestasi-${item.title.slice(0, 40)}`,
+                              'download'
+                            ).catch((err: unknown) =>
+                              onNotify(
+                                'error',
+                                err instanceof Error ? err.message : 'Gagal mengunduh bukti prestasi.'
+                              )
+                            )
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+                        >
+                          <i className="fa-solid fa-download" aria-hidden="true" />
+                          <span>Unduh</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -232,7 +406,7 @@ export const AchievementsSection: React.FC<{
                   </button>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
@@ -305,24 +479,31 @@ export const AchievementsSection: React.FC<{
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Bukti Foto
+                Bukti Prestasi (Foto / PDF)
               </label>
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept=".pdf,image/png,image/jpeg,image/webp"
                 onChange={handlePhotoUpload}
                 className="mt-1.5 w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-950"
               />
-              {uploading && <p className="mt-1 text-xs text-blue-600">Mengunggah...</p>}
-              {photoUrl.startsWith('data:') ? (
+              {uploading && (
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                  <div className="h-full bg-blue-600 transition-all" style={{ width: `${uploadPct}%` }} />
+                </div>
+              )}
+              {hasUploadedProof ? (
                 <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
                   <span className="font-medium">
                     <i className="fa-solid fa-circle-check mr-1.5" aria-hidden="true" />
-                    Bukti foto terunggah & siap disimpan
+                    Bukti prestasi terunggah & siap disimpan
                   </span>
                   <button
                     type="button"
-                    onClick={() => setPhotoUrl('')}
+                    onClick={() => {
+                      setPhotoUrl('');
+                      setStoragePath('');
+                    }}
                     className="font-semibold underline shrink-0"
                   >
                     Hapus
@@ -333,7 +514,7 @@ export const AchievementsSection: React.FC<{
                   type="text"
                   value={photoUrl}
                   onChange={(e) => setPhotoUrl(e.target.value)}
-                  placeholder="Atau tempel URL gambar (opsional)"
+                  placeholder="Atau tempel URL bukti gambar / PDF / Google Drive (opsional)"
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                 />
               )}
@@ -381,6 +562,19 @@ export const AchievementsSection: React.FC<{
           </form>
         </div>
       )}
+
+      <FilePreviewModal
+        open={Boolean(previewItem)}
+        title={previewItem?.title || ''}
+        subtitle={
+          previewItem ? `Tingkat ${previewItem.level} · ${previewItem.year}` : undefined
+        }
+        description={previewItem?.description}
+        fileUrl={previewItem?.photoUrl || ''}
+        fileName={previewItem ? `bukti-prestasi-${previewItem.title.slice(0, 40)}` : undefined}
+        onClose={() => setPreviewItem(null)}
+        onNotify={onNotify}
+      />
     </div>
   );
 };
