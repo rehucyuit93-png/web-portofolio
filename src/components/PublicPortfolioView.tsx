@@ -1,9 +1,102 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { fetchPublicPortfolio } from '../lib/portfolioService';
-import { openOrDownloadFile } from '../lib/storageUpload';
+import { openOrDownloadFile, resolveStoredFileUrl } from '../lib/storageUpload';
 import type { PublicPortfolioDoc } from '../types/portfolio';
 import { FilePreviewModal } from './FilePreviewModal';
+
+function isLikelyNonImageUrl(url?: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.startsWith('data:application/pdf') ||
+    lower.includes('.pdf') ||
+    lower.includes('drive.google.com')
+  );
+}
+
+const PublicProofThumb: React.FC<{
+  url: string;
+  title: string;
+  onPreview: () => void;
+}> = ({ url, title, onPreview }) => {
+  const [imgSrc, setImgSrc] = useState<string>(() =>
+    url.startsWith('firestore-blob://') ? '' : url
+  );
+  const [isNonImage, setIsNonImage] = useState<boolean>(() => isLikelyNonImageUrl(url));
+
+  useEffect(() => {
+    let active = true;
+    let revokeUrl = '';
+
+    if (!url) {
+      setImgSrc('');
+      setIsNonImage(false);
+      return;
+    }
+
+    if (!url.startsWith('firestore-blob://')) {
+      setImgSrc(url);
+      setIsNonImage(isLikelyNonImageUrl(url));
+      return;
+    }
+
+    resolveStoredFileUrl(url)
+      .then(({ resolvedUrl, isObjectUrl, mimeType }) => {
+        if (!active) {
+          if (isObjectUrl && resolvedUrl) URL.revokeObjectURL(resolvedUrl);
+          return;
+        }
+        if (isObjectUrl) revokeUrl = resolvedUrl;
+        if (mimeType && !mimeType.startsWith('image/')) {
+          setIsNonImage(true);
+          setImgSrc('');
+        } else {
+          setIsNonImage(false);
+          setImgSrc(resolvedUrl);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setIsNonImage(true);
+          setImgSrc('');
+        }
+      });
+
+    return () => {
+      active = false;
+      if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+    };
+  }, [url]);
+
+  return (
+    <button
+      type="button"
+      onClick={onPreview}
+      title="Pratinjau bukti prestasi"
+      className="group relative flex h-44 w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 sm:h-24 sm:w-32 shrink-0 dark:border-slate-700 dark:bg-slate-800"
+    >
+      {!isNonImage && imgSrc ? (
+        <>
+          <img
+            src={imgSrc}
+            alt={title}
+            referrerPolicy="no-referrer"
+            className="h-full w-full rounded-lg object-contain"
+          />
+          <span className="no-print absolute right-1.5 bottom-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/75 text-[10px] text-white opacity-90 transition-opacity group-hover:opacity-100">
+            <i className="fa-solid fa-expand" aria-hidden="true" />
+          </span>
+        </>
+      ) : (
+        <div className="flex flex-col items-center gap-1.5 text-blue-600 dark:text-blue-400">
+          <i className="fa-solid fa-file-shield text-2xl" aria-hidden="true" />
+          <span className="text-[11px] font-semibold">Bukti Prestasi</span>
+        </div>
+      )}
+    </button>
+  );
+};
 
 interface PublicPreviewItem {
   title: string;
@@ -359,23 +452,16 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
                 </p>
               ) : (
                 <div className="mt-4 space-y-4">
-                  {data.featuredAchievements.map((ach) => {
-                    const isDirectImage =
-                      Boolean(ach.photoUrl) &&
-                      !ach.photoUrl?.startsWith('firestore-blob://') &&
-                      !ach.photoUrl?.toLowerCase().startsWith('data:application/pdf') &&
-                      !ach.photoUrl?.toLowerCase().includes('.pdf') &&
-                      !ach.photoUrl?.toLowerCase().includes('drive.google.com');
-
-                    return (
+                  {data.featuredAchievements.map((ach) => (
                       <div
                         key={ach.id}
                         className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-start dark:border-slate-800 dark:bg-slate-900"
                       >
                         {ach.photoUrl && (
-                          <button
-                            type="button"
-                            onClick={() =>
+                          <PublicProofThumb
+                            url={ach.photoUrl}
+                            title={ach.title}
+                            onPreview={() =>
                               setPreviewItem({
                                 title: ach.title,
                                 subtitle: `Tingkat ${ach.level} · ${ach.year}`,
@@ -384,28 +470,7 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
                                 fileName: `bukti-prestasi-${ach.title.slice(0, 40)}`,
                               })
                             }
-                            title="Pratinjau bukti prestasi"
-                            className="group relative flex h-44 w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 sm:h-24 sm:w-32 shrink-0 dark:border-slate-700 dark:bg-slate-800"
-                          >
-                            {isDirectImage ? (
-                              <>
-                                <img
-                                  src={ach.photoUrl}
-                                  alt={ach.title}
-                                  referrerPolicy="no-referrer"
-                                  className="h-full w-full rounded-lg object-contain"
-                                />
-                                <span className="no-print absolute right-1.5 bottom-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/75 text-[10px] text-white opacity-90 transition-opacity group-hover:opacity-100">
-                                  <i className="fa-solid fa-expand" aria-hidden="true" />
-                                </span>
-                              </>
-                            ) : (
-                              <div className="flex flex-col items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                                <i className="fa-solid fa-file-shield text-2xl" aria-hidden="true" />
-                                <span className="text-[11px] font-semibold">Bukti Prestasi</span>
-                              </div>
-                            )}
-                          </button>
+                          />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -464,8 +529,7 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
                           )}
                         </div>
                       </div>
-                    );
-                  })}
+                  ))}
                 </div>
               )}
             </section>

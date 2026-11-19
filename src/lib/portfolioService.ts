@@ -491,8 +491,8 @@ export async function syncPublicPortfolio(
   const path = `publicPortfolios/${username}`;
   const pubRef = doc(db, 'publicPortfolios', username);
 
-  const MAX_PUBLIC_BYTES = 650000;
-  let remainingBudget = Math.max(100000, MAX_PUBLIC_BYTES - (profile.photoURL?.length || 0));
+  const MAX_PUBLIC_BYTES = 820000;
+  let remainingBudget = Math.max(120000, MAX_PUBLIC_BYTES - (profile.photoURL?.length || 0));
 
   function takeWithinBudget<T extends Record<string, unknown>>(items: T[], sectionMaxBytes: number): T[] {
     const out: T[] = [];
@@ -584,7 +584,7 @@ export async function syncPublicPortfolio(
         description: a.description || '',
       })),
     'photoUrl',
-    200000
+    260000
   );
 
   const featuredGalleries = takeWithinBudget(

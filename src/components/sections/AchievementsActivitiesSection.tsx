@@ -155,16 +155,27 @@ export const AchievementsSection: React.FC<{
       .filter((a) => {
         const matchSearch =
           !q ||
-          a.title.toLowerCase().includes(q) ||
-          a.level.toLowerCase().includes(q) ||
+          (a.title || '').toLowerCase().includes(q) ||
+          (a.level || '').toLowerCase().includes(q) ||
           (a.description || '').toLowerCase().includes(q) ||
-          String(a.year).includes(q);
+          String(a.year || '').includes(q);
         const matchLevel = levelFilter === 'all' || a.level === levelFilter;
         const matchYear = yearFilter === 'all' || String(a.year) === yearFilter;
         return matchSearch && matchLevel && matchYear;
       })
-      .sort((a, b) => b.year - a.year);
+      .sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
   }, [achievements, search, levelFilter, yearFilter]);
+
+  const publicCount = useMemo(
+    () => achievements.filter((a) => a.isPublic).length,
+    [achievements]
+  );
+  const isFiltered = Boolean(search.trim()) || levelFilter !== 'all' || yearFilter !== 'all';
+
+  const formatTimestamp = (ts: unknown): string => {
+    const d = (ts as { toDate?: () => Date } | undefined)?.toDate?.();
+    return d ? formatDateDMY(d) : '';
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -294,6 +305,37 @@ export const AchievementsSection: React.FC<{
         </button>
       </div>
 
+      {achievements.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
+          <div className="flex flex-wrap items-center gap-3">
+            <span>
+              Menampilkan <strong className="font-mono-tabular text-slate-900 dark:text-white">{filtered.length}</strong> dari{' '}
+              <strong className="font-mono-tabular text-slate-900 dark:text-white">{achievements.length}</strong> prestasi
+            </span>
+            <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">|</span>
+            <span>
+              Publik: <strong className="font-mono-tabular text-emerald-600 dark:text-emerald-400">{publicCount}</strong>
+            </span>
+            <span>
+              Privat: <strong className="font-mono-tabular">{achievements.length - publicCount}</strong>
+            </span>
+          </div>
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setLevelFilter('all');
+                setYearFilter('all');
+              }}
+              className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+            >
+              Tampilkan Semua
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Achievement Timeline */}
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
@@ -308,10 +350,25 @@ export const AchievementsSection: React.FC<{
               ? 'Catat pencapaian akademik, lomba, maupun penghargaan profesional Anda.'
               : 'Ubah kata kunci pencarian atau filter tingkat dan tahun untuk menampilkan semua prestasi.'}
           </p>
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setLevelFilter('all');
+                setYearFilter('all');
+              }}
+              className="mt-4 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              Tampilkan Semua Prestasi
+            </button>
+          )}
         </div>
       ) : (
         <div className="relative space-y-4 pl-5 before:absolute before:top-2 before:bottom-2 before:left-1.5 before:w-px before:bg-slate-200 sm:pl-6 sm:before:left-2 dark:before:bg-slate-800">
-          {filtered.map((item) => (
+          {filtered.map((item) => {
+            const dateStr = formatTimestamp(item.updatedAt || item.createdAt);
+            return (
             <article
               key={item.id}
               className="relative rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900"
@@ -340,6 +397,12 @@ export const AchievementsSection: React.FC<{
                       <span className={item.isPublic ? 'text-emerald-600 dark:text-emerald-400' : ''}>
                         {item.isPublic ? 'Publik' : 'Privat'}
                       </span>
+                      {dateStr && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="font-mono-tabular">Dicatat {dateStr}</span>
+                        </>
+                      )}
                     </div>
                     <h3 className="mt-1 text-base font-bold text-slate-900 break-words dark:text-white">
                       {item.title}
@@ -407,7 +470,8 @@ export const AchievementsSection: React.FC<{
                 </div>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
 

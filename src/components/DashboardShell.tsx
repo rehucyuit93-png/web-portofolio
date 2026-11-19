@@ -224,7 +224,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
 
       {/* Sidebar Navigation */}
       <aside
-        className={`no-print fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:static lg:translate-x-0 dark:border-slate-800 dark:bg-slate-900 ${
+        className={`no-print fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 dark:border-slate-800 dark:bg-slate-900 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -300,10 +300,10 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
           <button
             type="button"
             onClick={props.onLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50/90 px-3 py-2.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300 dark:hover:bg-rose-950/80"
           >
             <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
-            <span>Keluar</span>
+            <span>Keluar Akun</span>
           </button>
         </div>
       </aside>
@@ -352,7 +352,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
               <button
                 type="button"
                 onClick={() => handleNav('profile')}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1 pr-2.5 pl-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 sm:pr-3 sm:pl-1.5 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1 pr-2 pl-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 sm:pr-3 sm:pl-1.5 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 aria-label="Buka profil saya"
               >
                 <img
@@ -368,6 +368,17 @@ export const DashboardShell: React.FC<DashboardShellProps> = (props) => {
                 <span className="hidden max-w-[130px] truncate sm:inline">
                   {props.profile.fullName}
                 </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={props.onLogout}
+                title="Keluar dari akun"
+                aria-label="Keluar dari akun"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-2.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 sm:px-3.5 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300 dark:hover:bg-rose-950/80 whitespace-nowrap shrink-0"
+              >
+                <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
+                <span>Keluar</span>
               </button>
             </div>
           </div>

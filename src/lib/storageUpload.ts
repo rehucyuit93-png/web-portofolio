@@ -209,7 +209,8 @@ async function createInlineFallback(
   onProgress?.(25);
   if (isImageFile(file)) {
     const maxDim = folder === 'profile-photo' ? 560 : 880;
-    const maxChars = folder === 'profile-photo' ? 120000 : 145000;
+    const maxChars =
+      folder === 'profile-photo' ? 120000 : folder === 'achievements' ? 85000 : 145000;
     const dataUrl = await compressImageToDataUrl(file, maxDim, maxChars);
     onProgress?.(100);
     return {

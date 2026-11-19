@@ -78,6 +78,14 @@ export default function App() {
   const actionVerifiedRef = useRef<boolean>(false);
   const returnedFromVerifyRef = useRef<boolean>(false);
   const lastAutoCheckRef = useRef<number>(0);
+  const initialSyncedUidRef = useRef<string | null>(null);
+  const loadedCollectionsRef = useRef<{
+    uid: string;
+    docs: boolean;
+    certs: boolean;
+    achs: boolean;
+    gals: boolean;
+  }>({ uid: '', docs: false, certs: false, achs: false, gals: false });
 
   const [activeSection, setActiveSection] = useState<DashboardSection>('dashboard');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -276,6 +284,8 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         loggedUidRef.current = null;
+        initialSyncedUidRef.current = null;
+        loadedCollectionsRef.current = { uid: '', docs: false, certs: false, achs: false, gals: false };
         listenerNotifiedRef.current = false;
         setFirebaseUser(null);
         setEmailVerified(false);
@@ -367,6 +377,7 @@ export default function App() {
     if (!authReady || !firebaseUser || !account) return;
     const uid = firebaseUser.uid;
     listenerNotifiedRef.current = false;
+    loadedCollectionsRef.current = { uid, docs: false, certs: false, achs: false, gals: false };
 
     const handleListenerError = (err: Error) => {
       if (listenerNotifiedRef.current) return;
@@ -374,11 +385,43 @@ export default function App() {
       notify('error', formatFirestoreErrorForUser(err));
     };
 
-    const unsubDocs = subscribeUserCollection<PortfolioDocument>('documents', uid, setDocuments, handleListenerError);
-    const unsubCerts = subscribeUserCollection<Certificate>('certificates', uid, setCertificates, handleListenerError);
-    const unsubAchs = subscribeUserCollection<Achievement>('achievements', uid, setAchievements, handleListenerError);
+    const unsubDocs = subscribeUserCollection<PortfolioDocument>(
+      'documents',
+      uid,
+      (items) => {
+        if (loadedCollectionsRef.current.uid === uid) loadedCollectionsRef.current.docs = true;
+        setDocuments(items);
+      },
+      handleListenerError
+    );
+    const unsubCerts = subscribeUserCollection<Certificate>(
+      'certificates',
+      uid,
+      (items) => {
+        if (loadedCollectionsRef.current.uid === uid) loadedCollectionsRef.current.certs = true;
+        setCertificates(items);
+      },
+      handleListenerError
+    );
+    const unsubAchs = subscribeUserCollection<Achievement>(
+      'achievements',
+      uid,
+      (items) => {
+        if (loadedCollectionsRef.current.uid === uid) loadedCollectionsRef.current.achs = true;
+        setAchievements(items);
+      },
+      handleListenerError
+    );
     const unsubActs = subscribeUserCollection<Activity>('activities', uid, setActivities, handleListenerError);
-    const unsubGals = subscribeUserCollection<GalleryItem>('galleries', uid, setGalleries, handleListenerError);
+    const unsubGals = subscribeUserCollection<GalleryItem>(
+      'galleries',
+      uid,
+      (items) => {
+        if (loadedCollectionsRef.current.uid === uid) loadedCollectionsRef.current.gals = true;
+        setGalleries(items);
+      },
+      handleListenerError
+    );
     const unsubLogs = subscribeUserLogs(uid, setLogs, handleListenerError);
 
     return () => {
@@ -390,6 +433,36 @@ export default function App() {
       unsubLogs();
     };
   }, [authReady, firebaseUser, account, notify]);
+
+  // Re-sync publicPortfolios once after initial Firestore collections hydrate so stale/truncated entries are repaired automatically
+  useEffect(() => {
+    if (!authReady || !firebaseUser || !account || !profile || !navigator.onLine) return;
+    const flags = loadedCollectionsRef.current;
+    if (
+      flags.uid !== firebaseUser.uid ||
+      !flags.docs ||
+      !flags.certs ||
+      !flags.achs ||
+      !flags.gals ||
+      initialSyncedUidRef.current === firebaseUser.uid
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      initialSyncedUidRef.current = firebaseUser.uid;
+      void syncPublicPortfolio(
+        profile,
+        account.role,
+        documents,
+        certificates,
+        achievements,
+        galleries
+      ).catch(() => undefined);
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+  }, [authReady, firebaseUser, account, profile, documents, certificates, achievements, galleries]);
 
   const navigatePublicPortfolio = (username: string) => {
     const path = `/portfolio/${encodeURIComponent(username)}`;
